@@ -129,15 +129,15 @@ export default function AnalyticsView({ products }: Props) {
 // ─── Single product view ──────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function SingleProductView({ data, tier }: { data: any; tier: SampleTier }) {
-  const reactionData = Object.entries(data.reactionCounts as Record<string, number>).map(([name, value]) => ({ name, value }))
-  const REACTION_COLORS: Record<string, string> = { love: '#E1E723', like: '#77787B', meh: '#555', dislike: '#ef4444' }
+  const REACTION_LABELS: Record<string, string> = { love: 'Highly Positive', like: 'Positive', meh: 'Neutral', dislike: 'Negative' }
+  const reactionData = Object.entries(data.reactionCounts as Record<string, number>).map(([key, value]) => ({ name: REACTION_LABELS[key] ?? key, value, key }))
 
   return (
     <div className="space-y-5">
       {/* Overview row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KPI label="Responses" value={data.n} sub="total feedback" />
-        <KPI label="Positive Rate" value={`${data.positiveRate}%`} sub="love + like" accent />
+        <KPI label="Positive Rate" value={`${data.positiveRate}%`} sub="Highly Positive + Positive" accent />
         <KPI label="Sample Tier" value={TIER_LABELS[tier].split(' ')[0]} sub={`n = ${data.n}`} />
         <KPI label="Comments" value={data.surveyStats?.length ?? 0} sub="survey questions" />
       </div>
@@ -150,11 +150,7 @@ function SingleProductView({ data, tier }: { data: any; tier: SampleTier }) {
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#77787B' }} />
             <YAxis tick={{ fontSize: 11, fill: '#77787B' }} />
             <Tooltip contentStyle={tooltipStyle} />
-            <Bar dataKey="value" radius={[0,0,0,0]}>
-              {reactionData.map(entry => (
-                <rect key={entry.name} fill={REACTION_COLORS[entry.name] || '#888'} />
-              ))}
-            </Bar>
+            <Bar dataKey="value" fill="#E1E723" />
           </BarChart>
         </ResponsiveContainer>
         <p className="text-xs text-ryobi-gray mt-2">
