@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import SwipeCard from '@/components/SwipeCard'
 import ReactionButtons from '@/components/ReactionButtons'
 import SurveyStep from '@/components/SurveyStep'
+import VoiceCommentStep from '@/components/VoiceCommentStep'
 import { SURVEY_QUESTIONS } from '@/lib/types'
 import type { Product, Reaction, FeedbackCategory } from '@/lib/types'
 
@@ -139,23 +140,14 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
 
         {step === 'comment' && (
           <motion.div key="comment" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="flex-1 flex flex-col items-center justify-center p-6 gap-5">
-            <h2 className="text-xl font-bold text-gray-800 text-center">Anything else to add?</h2>
-            <p className="text-gray-500 text-sm text-center">Optional — but a sentence helps the product team a lot.</p>
-            <textarea
-              value={comment}
-              onChange={e => setComment(e.target.value)}
-              placeholder="e.g. Grip gets slippery after 30 min in humid conditions..."
-              className="w-full max-w-sm h-32 p-4 rounded-2xl border-2 border-gray-200 focus:border-orange-400 focus:outline-none resize-none text-sm text-gray-700"
+            className="flex-1 flex flex-col items-center justify-center w-full">
+            <VoiceCommentStep
+              comment={comment}
+              onChange={setComment}
+              onSubmit={handleSubmit}
+              onSkip={handleSubmit}
+              submitting={submitting}
             />
-            <button onClick={handleSubmit} disabled={submitting}
-              className="w-full max-w-sm py-4 bg-orange-500 text-white font-bold text-lg rounded-2xl hover:bg-orange-600 active:scale-95 transition-all disabled:opacity-50">
-              {submitting ? 'Submitting...' : 'Submit Feedback'}
-            </button>
-            <button onClick={handleSubmit} disabled={submitting}
-              className="text-gray-400 text-sm underline">
-              Skip and submit
-            </button>
           </motion.div>
         )}
 
