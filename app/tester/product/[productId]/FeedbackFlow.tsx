@@ -158,13 +158,11 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
         {step === 'rate' && (
           <motion.div key="rate" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
             className="flex-1 flex flex-col items-center justify-start px-6 py-8 overflow-y-auto gap-6">
-            <div className="w-full max-w-sm text-center">
-              <h1 className="ryobi-heading text-3xl text-white tracking-widest leading-tight">
-                How did the {product.name} perform today?
-              </h1>
-              <p className="text-white/55 text-sm mt-2">Select the option that best matches your experience</p>
-            </div>
             <SwipeCard product={product} />
+            <div className="w-full max-w-sm text-center">
+              <h2 className="ryobi-heading text-2xl text-white tracking-widest leading-tight">How did it perform today?</h2>
+              <p className="text-white/55 text-sm mt-1">Select the option that best matches your experience</p>
+            </div>
             <ReactionButtons onReact={handleImpression} selected={impression?.score} />
           </motion.div>
         )}
