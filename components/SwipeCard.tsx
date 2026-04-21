@@ -14,20 +14,20 @@ const SWIPE_THRESHOLD = 80
 export default function SwipeCard({ product, onSwipe }: Props) {
   const x = useMotionValue(0)
   const y = useMotionValue(0)
-  const rotate = useTransform(x, [-200, 200], [-15, 15])
+  const rotate = useTransform(x, [-200, 200], [-12, 12])
   const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0])
 
-  const loveOpacity = useTransform(x, [0, SWIPE_THRESHOLD], [0, 1])
+  const loveOpacity    = useTransform(x, [0, SWIPE_THRESHOLD], [0, 1])
   const dislikeOpacity = useTransform(x, [-SWIPE_THRESHOLD, 0], [1, 0])
-  const likeOpacity = useTransform(y, [-SWIPE_THRESHOLD, 0], [1, 0])
-  const mehOpacity = useTransform(y, [0, SWIPE_THRESHOLD], [0, 1])
+  const likeOpacity    = useTransform(y, [-SWIPE_THRESHOLD, 0], [1, 0])
+  const mehOpacity     = useTransform(y, [0, SWIPE_THRESHOLD], [0, 1])
 
   function handleDragEnd(_: unknown, info: PanInfo) {
     const { offset } = info
-    if (offset.x > SWIPE_THRESHOLD) return onSwipe('love')
+    if (offset.x > SWIPE_THRESHOLD)  return onSwipe('love')
     if (offset.x < -SWIPE_THRESHOLD) return onSwipe('dislike')
     if (offset.y < -SWIPE_THRESHOLD) return onSwipe('like')
-    if (offset.y > SWIPE_THRESHOLD) return onSwipe('meh')
+    if (offset.y > SWIPE_THRESHOLD)  return onSwipe('meh')
   }
 
   return (
@@ -41,47 +41,52 @@ export default function SwipeCard({ product, onSwipe }: Props) {
         className="cursor-grab active:cursor-grabbing"
         whileTap={{ scale: 1.02 }}
       >
-        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-          <div className="relative h-72 bg-gray-100">
+        <div className="bg-ryobi-dark overflow-hidden shadow-2xl border-b-4 border-ryobi-yellow">
+          {/* Product image */}
+          <div className="relative h-72 bg-black">
             {product.image_url ? (
-              <Image src={product.image_url} alt={product.name} fill className="object-cover" unoptimized />
+              <Image src={product.image_url} alt={product.name} fill className="object-cover opacity-80" unoptimized />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-6xl">🔧</div>
+              <div className="w-full h-full flex items-center justify-center text-ryobi-yellow text-6xl">🔧</div>
             )}
 
-            {/* Swipe indicators */}
+            {/* Reaction overlays */}
             <motion.div style={{ opacity: loveOpacity }}
-              className="absolute inset-0 bg-green-500/20 flex items-center justify-center">
-              <span className="text-6xl rotate-12">❤️</span>
+              className="absolute inset-0 bg-ryobi-yellow/30 flex items-center justify-center">
+              <span className="text-ryobi-yellow text-5xl font-black ryobi-heading rotate-12 drop-shadow-lg">LOVE IT</span>
             </motion.div>
             <motion.div style={{ opacity: dislikeOpacity }}
-              className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
-              <span className="text-6xl -rotate-12">👎</span>
+              className="absolute inset-0 bg-red-500/30 flex items-center justify-center">
+              <span className="text-red-400 text-5xl font-black ryobi-heading -rotate-12 drop-shadow-lg">NOPE</span>
             </motion.div>
             <motion.div style={{ opacity: likeOpacity }}
               className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
-              <span className="text-6xl">👍</span>
+              <span className="text-blue-300 text-5xl font-black ryobi-heading drop-shadow-lg">GOOD</span>
             </motion.div>
             <motion.div style={{ opacity: mehOpacity }}
-              className="absolute inset-0 bg-yellow-500/20 flex items-center justify-center">
-              <span className="text-6xl">😐</span>
+              className="absolute inset-0 bg-white/10 flex items-center justify-center">
+              <span className="text-white text-5xl font-black ryobi-heading drop-shadow-lg">MEH</span>
             </motion.div>
+
+            {/* ONE+ badge */}
+            <div className="absolute top-3 right-3 bg-ryobi-yellow px-2 py-0.5">
+              <span className="text-ryobi-black text-xs font-black ryobi-heading">ONE+™</span>
+            </div>
           </div>
 
-          <div className="p-5">
-            <div className="text-xs font-semibold text-orange-500 uppercase tracking-widest mb-1">{product.category}</div>
-            <h2 className="text-xl font-bold text-gray-900">{product.name}</h2>
-            <p className="text-gray-500 text-sm mt-1 line-clamp-2">{product.description}</p>
-            <div className="mt-3 text-xs text-gray-400">SKU: {product.sku}</div>
+          <div className="p-4 bg-ryobi-dark">
+            <div className="text-ryobi-yellow text-xs font-bold uppercase tracking-widest mb-1">{product.category}</div>
+            <h2 className="ryobi-heading text-xl text-white">{product.name}</h2>
+            <p className="text-ryobi-gray text-xs mt-1 line-clamp-2">{product.description}</p>
+            <div className="mt-2 text-xs text-ryobi-muted">SKU: {product.sku}</div>
           </div>
         </div>
       </motion.div>
 
-      {/* Swipe hint labels */}
-      <div className="absolute -bottom-8 left-0 right-0 flex justify-between text-xs text-gray-400 px-4">
-        <span>← Dislike</span>
-        <span>↑ Like</span>
-        <span>Love →</span>
+      <div className="absolute -bottom-7 left-0 right-0 flex justify-between text-xs text-ryobi-gray px-2 uppercase tracking-wider font-semibold">
+        <span>← Nope</span>
+        <span>↑ Good</span>
+        <span>Love it →</span>
       </div>
     </div>
   )

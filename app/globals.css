@@ -1,27 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-barlow: 'Barlow Condensed', Arial, sans-serif;
+  --ryobi-yellow:   #E1E723;
+  --ryobi-black:    #000000;
+  --ryobi-dark:     #1A1A1A;
+  --ryobi-muted:    #2E2E2E;
+  --ryobi-gray:     #77787B;
+  --ryobi-offwhite: #F5F5F5;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ryobi-offwhite);
+  color: var(--ryobi-dark);
+  font-family: 'Barlow', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ryobi-style uppercase display headings */
+.ryobi-heading {
+  font-family: 'Barlow Condensed', Arial, sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Yellow accent bar — used on cards and headers */
+.ryobi-accent {
+  border-left: 4px solid var(--ryobi-yellow);
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+  .text-balance { text-wrap: balance; }
 }
