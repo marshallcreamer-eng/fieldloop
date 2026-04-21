@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Zap, Hand, Battery, ShieldCheck, Ruler, MessageSquare, type LucideIcon } from 'lucide-react'
 import SwipeCard from '@/components/SwipeCard'
 import ReactionButtons from '@/components/ReactionButtons'
 import SurveyStep from '@/components/SurveyStep'
@@ -17,13 +18,13 @@ interface Props {
   testerId: string
 }
 
-const CATEGORIES: { value: FeedbackCategory; label: string; icon: string }[] = [
-  { value: 'performance', label: 'Performance', icon: '⚡' },
-  { value: 'ergonomics',  label: 'Ergonomics',  icon: '🤲' },
-  { value: 'battery',     label: 'Battery',     icon: '🔋' },
-  { value: 'safety',      label: 'Safety',      icon: '🦺' },
-  { value: 'design',      label: 'Design',      icon: '✏️' },
-  { value: 'other',       label: 'Other',       icon: '💬' },
+const CATEGORIES: { value: FeedbackCategory; label: string; sub: string; Icon: LucideIcon }[] = [
+  { value: 'performance', label: 'Performance',  sub: 'Power, speed & output',     Icon: Zap },
+  { value: 'ergonomics',  label: 'Ergonomics',   sub: 'Grip, weight & handling',   Icon: Hand },
+  { value: 'battery',     label: 'Battery Life', sub: 'Runtime & charge time',     Icon: Battery },
+  { value: 'safety',      label: 'Safety',       sub: 'Guards, warnings & kickback', Icon: ShieldCheck },
+  { value: 'design',      label: 'Build Quality', sub: 'Materials & construction',  Icon: Ruler },
+  { value: 'other',       label: 'Other',        sub: 'Anything else',             Icon: MessageSquare },
 ]
 
 export default function FeedbackFlow({ product, assignmentId, testerId }: Props) {
@@ -32,8 +33,9 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
   const [category, setCategory]       = useState<FeedbackCategory | null>(null)
   const [surveyIndex, setSurveyIndex] = useState(0)
   const [surveyScores, setSurveyScores] = useState<Record<string, number>>({})
-  const [comment, setComment]         = useState('')
-  const [submitting, setSubmitting]   = useState(false)
+  const [comment, setComment]           = useState('')
+  const [npsFollowUp, setNpsFollowUp]   = useState('')
+  const [submitting, setSubmitting]     = useState(false)
 
   function handleReaction(r: Reaction) {
     setReaction(r)
@@ -46,10 +48,11 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
     setStep('survey')
   }
 
-  function handleSurveyAnswer(score: number) {
+  function handleSurveyAnswer(score: number, followUp?: string) {
     const q = SURVEY_QUESTIONS[surveyIndex]
     const updated = { ...surveyScores, [q.key]: score }
     setSurveyScores(updated)
+    if (followUp) setNpsFollowUp(followUp)
     if (surveyIndex < SURVEY_QUESTIONS.length - 1) {
       setSurveyIndex(i => i + 1)
     } else {
@@ -69,7 +72,7 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
         product_id: product.id,
         reaction,
         category,
-        comment: comment || null,
+        comment: comment || npsFollowUp || null,
         media_urls: [],
         session_date: new Date().toISOString().split('T')[0],
         survey_scores: surveyScores,
@@ -132,16 +135,25 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
         {/* CATEGORY */}
         {step === 'category' && (
           <motion.div key="category" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-6">
-            <h2 className="ryobi-heading text-2xl text-white text-center tracking-widest">What stood out most?</h2>
-            <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
-              {CATEGORIES.map(c => (
-                <button key={c.value} onClick={() => handleCategory(c.value)}
-                  className="flex items-center gap-3 p-4 bg-ryobi-dark border-2 border-ryobi-muted hover:border-ryobi-yellow hover:bg-black transition-all active:scale-95 text-left">
-                  <span className="text-2xl">{c.icon}</span>
-                  <span className="ryobi-heading text-sm text-white">{c.label}</span>
-                </button>
-              ))}
+            className="flex-1 flex flex-col items-center justify-center px-5 py-8 gap-5">
+            <div className="text-center">
+              <h2 className="ryobi-heading text-2xl text-white tracking-widest mb-1">What influenced your rating most?</h2>
+              <p className="text-white/35 text-xs uppercase tracking-widest">Select the primary factor</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 w-full max-w-sm">
+              {CATEGORIES.map(c => {
+                const { Icon } = c
+                return (
+                  <button key={c.value} onClick={() => handleCategory(c.value)}
+                    className="flex flex-col gap-2 p-4 bg-ryobi-dark border border-white/10 hover:border-ryobi-yellow hover:bg-black/60 transition-all active:scale-95 text-left group">
+                    <Icon size={18} className="text-ryobi-yellow/70 group-hover:text-ryobi-yellow transition-colors" />
+                    <div>
+                      <div className="ryobi-heading text-sm text-white tracking-wide">{c.label}</div>
+                      <div className="text-white/35 text-[10px] mt-0.5 leading-snug">{c.sub}</div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </motion.div>
         )}
