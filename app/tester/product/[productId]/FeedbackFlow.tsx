@@ -118,16 +118,6 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
 
   const totalSurveySteps = SURVEY_QUESTIONS.length
 
-  const stepLabels: Record<Step, string> = {
-    rate:     'How did it perform today?',
-    category: 'What stood out most?',
-    context:  'Field context',
-    survey:   `Survey ${surveyIndex + 1} of ${totalSurveySteps}`,
-    comment:  'Add a comment',
-    ffe:      'Research questions',
-    done:     'Done',
-  }
-
   function progressPct(): number {
     if (step === 'rate')     return 12
     if (step === 'category') return 25
@@ -151,7 +141,6 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
             <span className="ryobi-heading text-ryobi-black text-sm font-black tracking-widest">RYOBI</span>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-white/65 text-xs uppercase tracking-widest">{stepLabels[step]}</div>
             <div className="text-white text-sm font-semibold truncate">{product.name}</div>
           </div>
         </div>
@@ -168,12 +157,14 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
         {/* RATE */}
         {step === 'rate' && (
           <motion.div key="rate" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="flex-1 flex flex-col items-center justify-start gap-6 px-6 py-6 overflow-y-auto">
-            <SwipeCard product={product} />
-            <div className="text-center">
-              <h2 className="ryobi-heading text-xl text-white tracking-widest">How did it perform today?</h2>
-              <p className="text-white/55 text-sm mt-1">Select the option that best describes your experience</p>
+            className="flex-1 flex flex-col items-center justify-start px-6 py-8 overflow-y-auto gap-6">
+            <div className="w-full max-w-sm text-center">
+              <h1 className="ryobi-heading text-3xl text-white tracking-widest leading-tight">
+                How did the {product.name} perform today?
+              </h1>
+              <p className="text-white/55 text-sm mt-2">Select the option that best matches your experience</p>
             </div>
+            <SwipeCard product={product} />
             <ReactionButtons onReact={handleImpression} selected={impression?.score} />
           </motion.div>
         )}
