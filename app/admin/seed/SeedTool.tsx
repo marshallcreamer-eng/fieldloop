@@ -11,13 +11,13 @@ interface SeedResult {
 }
 
 const PRESETS = [
-  { label: 'Small pilot',     testers: 5,  products: 3, days: 7,  description: '5 testers · 3 products · 7 days' },
-  { label: 'Mid-size test',   testers: 10, products: 4, days: 14, description: '10 testers · 4 products · 14 days' },
-  { label: 'Full field run',  testers: 15, products: 5, days: 30, description: '15 testers · 5 products · 30 days' },
+  { label: 'Quick demo',      testers: 10, products: 3, days: 14, description: '10 testers · 3 products · 14 days' },
+  { label: 'Mid-size test',   testers: 20, products: 4, days: 30, description: '20 testers · 4 products · 30 days' },
+  { label: 'Full field run',  testers: 30, products: 5, days: 60, description: '30 testers · 5 products · 60 days' },
 ]
 
 export default function SeedTool() {
-  const [numTesters,  setNumTesters]  = useState(5)
+  const [numTesters,  setNumTesters]  = useState(10)
   const [numProducts, setNumProducts] = useState(3)
   const [numDays,     setNumDays]     = useState(7)
   const [clearFirst,  setClearFirst]  = useState(true)
@@ -87,11 +87,11 @@ export default function SeedTool() {
         <div className="bg-white border border-gray-200 p-5 space-y-5">
           <div className="text-xs text-ryobi-gray uppercase tracking-widest font-semibold mb-1">Custom Configuration</div>
 
-          <Slider label="Testers" min={1} max={15} value={numTesters}
+          <Slider label="Testers" min={1} max={30} value={numTesters}
             onChange={setNumTesters} unit="testers" />
           <Slider label="Products" min={1} max={5} value={numProducts}
             onChange={setNumProducts} unit="products" />
-          <Slider label="Days of history" min={1} max={30} value={numDays}
+          <Slider label="Days of history" min={1} max={60} value={numDays}
             onChange={setNumDays} unit="days" />
 
           <div className="pt-2 border-t border-gray-100 text-xs text-ryobi-gray">

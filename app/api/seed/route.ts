@@ -42,39 +42,82 @@ const PRODUCTS = [
 ]
 
 const TESTER_POOL = [
-  { name: 'Jake Rivera',    email: 'jake@fieldloop.demo',    region: 'Southeast' },
-  { name: 'Marcus Webb',    email: 'marcus@fieldloop.demo',  region: 'Midwest' },
-  { name: 'Dana Chen',      email: 'dana@fieldloop.demo',    region: 'Northeast' },
-  { name: 'Troy Simmons',   email: 'troy@fieldloop.demo',    region: 'Southwest' },
-  { name: 'Lisa Park',      email: 'lisa@fieldloop.demo',    region: 'Northwest' },
-  { name: 'Ray Hutchins',   email: 'ray@fieldloop.demo',     region: 'Southeast' },
-  { name: 'Priya Nair',     email: 'priya@fieldloop.demo',   region: 'Midwest' },
-  { name: 'Derek Osei',     email: 'derek@fieldloop.demo',   region: 'Northeast' },
-  { name: 'Carla Moreno',   email: 'carla@fieldloop.demo',   region: 'Southwest' },
-  { name: 'Ben Kowalski',   email: 'ben@fieldloop.demo',     region: 'Northwest' },
-  { name: 'Angela Torres',  email: 'angela@fieldloop.demo',  region: 'Southeast' },
-  { name: 'Steve Nakamura', email: 'steve@fieldloop.demo',   region: 'Midwest' },
-  { name: 'Faith Olusegun', email: 'faith@fieldloop.demo',   region: 'Northeast' },
-  { name: 'Kyle Brennan',   email: 'kyle@fieldloop.demo',    region: 'Southwest' },
-  { name: 'Mia Johansson',  email: 'mia@fieldloop.demo',     region: 'Northwest' },
+  { name: 'Jake Rivera',      email: 'jake@fieldloop.demo',      region: 'Southeast' },
+  { name: 'Marcus Webb',      email: 'marcus@fieldloop.demo',    region: 'Midwest' },
+  { name: 'Dana Chen',        email: 'dana@fieldloop.demo',      region: 'Northeast' },
+  { name: 'Troy Simmons',     email: 'troy@fieldloop.demo',      region: 'Southwest' },
+  { name: 'Lisa Park',        email: 'lisa@fieldloop.demo',      region: 'Northwest' },
+  { name: 'Ray Hutchins',     email: 'ray@fieldloop.demo',       region: 'Southeast' },
+  { name: 'Priya Nair',       email: 'priya@fieldloop.demo',     region: 'Midwest' },
+  { name: 'Derek Osei',       email: 'derek@fieldloop.demo',     region: 'Northeast' },
+  { name: 'Carla Moreno',     email: 'carla@fieldloop.demo',     region: 'Southwest' },
+  { name: 'Ben Kowalski',     email: 'ben@fieldloop.demo',       region: 'Northwest' },
+  { name: 'Angela Torres',    email: 'angela@fieldloop.demo',    region: 'Southeast' },
+  { name: 'Steve Nakamura',   email: 'steve@fieldloop.demo',     region: 'Midwest' },
+  { name: 'Faith Olusegun',   email: 'faith@fieldloop.demo',     region: 'Northeast' },
+  { name: 'Kyle Brennan',     email: 'kyle@fieldloop.demo',      region: 'Southwest' },
+  { name: 'Mia Johansson',    email: 'mia@fieldloop.demo',       region: 'Northwest' },
+  { name: 'Darnell Cook',     email: 'darnell@fieldloop.demo',   region: 'Southeast' },
+  { name: 'Rachel Huang',     email: 'rachel@fieldloop.demo',    region: 'Midwest' },
+  { name: 'Greg Patel',       email: 'greg@fieldloop.demo',      region: 'Northeast' },
+  { name: 'Vanessa Scott',    email: 'vanessa@fieldloop.demo',   region: 'Southwest' },
+  { name: 'Omar Lindqvist',   email: 'omar@fieldloop.demo',      region: 'Northwest' },
+  { name: 'Tasha Williams',   email: 'tasha@fieldloop.demo',     region: 'Southeast' },
+  { name: 'Drew Castillo',    email: 'drew@fieldloop.demo',      region: 'Midwest' },
+  { name: 'Nina Ferreira',    email: 'nina@fieldloop.demo',      region: 'Northeast' },
+  { name: 'Brock Hammond',    email: 'brock@fieldloop.demo',     region: 'Southwest' },
+  { name: 'Yuki Tanaka',      email: 'yuki@fieldloop.demo',      region: 'Northwest' },
+  { name: 'Cedric Mason',     email: 'cedric@fieldloop.demo',    region: 'Southeast' },
+  { name: 'Abby Nguyen',      email: 'abby@fieldloop.demo',      region: 'Midwest' },
+  { name: 'Jared Okafor',     email: 'jared@fieldloop.demo',     region: 'Northeast' },
+  { name: 'Sofia Petrov',     email: 'sofia@fieldloop.demo',     region: 'Southwest' },
+  { name: 'Hank Delgado',     email: 'hank@fieldloop.demo',      region: 'Northwest' },
 ]
 
 const COMMENTS = [
-  'Grip gets slippery after 30 min in humid conditions.',
-  'Battery drain faster than expected below 50°F.',
-  'No issues after a full weekend of use — very impressed.',
-  'Vibration is much lower than my gas equivalent. Hands feel fine.',
-  'Startup is instant, love not dealing with pull cords.',
+  // Performance
+  'Startup is instant every time — love not dealing with pull cords.',
+  'Cut quality on thick St. Augustine grass was impressive. Clean pass every time.',
+  'Turbo mode on the blower is seriously powerful — cleared wet oak leaves no problem.',
+  'Chain felt sluggish after about 45 min of continuous cutting. Needed a break.',
   'Self-propel speed felt too fast on slopes — almost got away from me.',
-  'Auto-oiler seems to be using oil faster than expected.',
-  'Really quiet compared to my neighbor\'s gas mower — neighbors noticed.',
-  'Charge indicator LEDs are a nice touch on the battery.',
-  'Chain tension loosened after about an hour. Had to retighten.',
-  'Turbo mode on the blower is seriously powerful.',
-  'Would love a brushless indicator light on the tool body.',
+  'Trimmer head speed is great but takes a second to ramp up from idle.',
+  'Cut through 8" pine branches without hesitation. Very impressed.',
+  'Battery performance in 95°F heat was noticeably worse than mild days.',
+  'Discharge chute placement is perfect — clippings land exactly where expected.',
+  'Motor felt strong even at the end of a 2-hour session. No power fade.',
+  // Ergonomics
+  'Grip gets slippery after 30 min in humid conditions.',
   'Balanced perfectly. No arm fatigue after 45 minutes of trimming.',
-  'Bag fills up fast on thick grass — maybe a bigger bag option?',
-  null, null, null, null,
+  'Handle height is adjustable but the mechanism feels a bit loose.',
+  'Really quiet compared to my neighbor\'s gas mower — neighbors actually thanked me.',
+  'Vibration is much lower than my gas equivalent. Hands feel fine after an hour.',
+  'Shoulder strap on the blower is a nice addition. Took pressure off my arm.',
+  'The D-handle on the chainsaw gives great control in tight spots.',
+  'Front bail bar on the mower is positioned slightly awkward — had to adjust grip.',
+  'Weight distribution is well thought out. Doesn\'t pull forward or back.',
+  'Folding handle locks down solid. No rattling during transport.',
+  // Battery
+  'Battery drain faster than expected below 50°F — lost about 20% capacity.',
+  'Charge indicator LEDs are a nice touch. Knew exactly when to swap out.',
+  'Got through my entire half-acre on a single charge. That\'s a win.',
+  'Would love a battery level indicator on the tool itself, not just the pack.',
+  'Charging time from empty is about 90 minutes — reasonable.',
+  'Cold-weather performance is noticeably better than my old 18V packs.',
+  'Battery clicked in solidly and didn\'t wobble at all during use.',
+  'Ran two full tanks worth of trimming before the battery needed a charge.',
+  // Safety & Build
+  'Auto-oiler seems to be using oil faster than expected — kept needing to refill.',
+  'Chain tension loosened after about an hour of cutting. Had to retighten twice.',
+  'Kickback guard triggered once — worked exactly as it should.',
+  'Build quality feels solid. No flex in the deck even on rough terrain.',
+  'Blade brake stops fast — impressed by how quickly it cuts out.',
+  'Bag connection point feels slightly fragile. Hope it holds up long-term.',
+  'No issues after a full weekend of use. Really impressed overall.',
+  'Would love a brushless indicator light on the tool body.',
+  'Bag fills up fast on thick grass — a bigger bag option would be great.',
+  'The rubber over-grip on the trigger is a nice detail — no slipping.',
+  null, null, null, null, null, null,
 ]
 
 const CATEGORIES = ['performance', 'ergonomics', 'battery', 'safety', 'design', 'other'] as const
@@ -102,11 +145,11 @@ function nps(mean: number) {
 
 export async function POST(req: NextRequest) {
   const supabase = createSupabaseAdmin()
-  const { numTesters = 5, numDays = 7, numProducts = 3, clearFirst = false } = await req.json()
+  const { numTesters = 10, numDays = 30, numProducts = 5, clearFirst = false } = await req.json()
 
   const clampedTesters  = Math.min(Math.max(numTesters, 1), TESTER_POOL.length)
   const clampedProducts = Math.min(Math.max(numProducts, 1), PRODUCTS.length)
-  const clampedDays     = Math.min(Math.max(numDays, 1), 30)
+  const clampedDays     = Math.min(Math.max(numDays, 1), 60)
 
   if (clearFirst) {
     await supabase.from('survey_responses').delete().neq('id', '00000000-0000-0000-0000-000000000000')
@@ -160,11 +203,11 @@ export async function POST(req: NextRequest) {
   const surveyToInsert = feedbackRows!.flatMap(fb => {
     const base = fb.reaction === 'love' ? 6.1 : fb.reaction === 'like' ? 5.0 : fb.reaction === 'meh' ? 3.4 : 2.1
     return [
-      { feedback_id: fb.id, question_key: 'overall_satisfaction',   score: likert(base) },
-      { feedback_id: fb.id, question_key: 'ease_of_use',            score: likert(base + 0.3) },
+      { feedback_id: fb.id, question_key: 'overall_satisfaction',    score: likert(base) },
+      { feedback_id: fb.id, question_key: 'ease_of_use',             score: likert(base + 0.3) },
       { feedback_id: fb.id, question_key: 'performance_expectation', score: likert(base - 0.2) },
-      { feedback_id: fb.id, question_key: 'build_quality',          score: likert(base + 0.4) },
-      { feedback_id: fb.id, question_key: 'nps',                    score: nps(base * 1.5) },
+      { feedback_id: fb.id, question_key: 'build_quality',           score: likert(base + 0.4) },
+      { feedback_id: fb.id, question_key: 'nps',                     score: nps(base * 1.5) },
     ]
   })
 
@@ -174,9 +217,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     success: true,
     stats: {
-      products: productRows!.length,
-      testers: testerRows!.length,
-      feedback: feedbackRows!.length,
+      products:         productRows!.length,
+      testers:          testerRows!.length,
+      feedback:         feedbackRows!.length,
       survey_responses: surveyToInsert.length,
     },
   })
