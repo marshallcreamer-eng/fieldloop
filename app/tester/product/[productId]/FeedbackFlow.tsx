@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, Hand, Battery, ShieldCheck, Ruler, MessageSquare, type LucideIcon } from 'lucide-react'
+import DemoNav from '@/components/DemoNav'
 import SwipeCard from '@/components/SwipeCard'
 import ReactionButtons from '@/components/ReactionButtons'
 import SurveyStep from '@/components/SurveyStep'
@@ -92,6 +93,9 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
 
   return (
     <div className="min-h-screen bg-ryobi-black flex flex-col">
+
+      {/* Demo nav */}
+      <DemoNav productName={product.name} />
 
       {/* Header */}
       <div className="bg-ryobi-black border-b-4 border-ryobi-yellow sticky top-0 z-10">

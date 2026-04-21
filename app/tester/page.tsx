@@ -1,6 +1,7 @@
 import { createSupabase } from '@/lib/supabase'
 import Image from 'next/image'
 import Link from 'next/link'
+import DemoNav from '@/components/DemoNav'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,6 +40,11 @@ export default async function TesterHome() {
           backgroundImage: 'linear-gradient(rgba(225,231,35,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(225,231,35,0.03) 1px, transparent 1px)',
           backgroundSize: '60px 60px',
         }} />
+
+      {/* Demo nav */}
+      <div className="relative z-10">
+        <DemoNav />
+      </div>
 
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/10">
