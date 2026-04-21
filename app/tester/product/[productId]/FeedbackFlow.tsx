@@ -170,6 +170,10 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
           <motion.div key="rate" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
             className="flex-1 flex flex-col items-center justify-start gap-6 px-6 py-6 overflow-y-auto">
             <SwipeCard product={product} />
+            <div className="text-center">
+              <h2 className="ryobi-heading text-xl text-white tracking-widest">How did it perform today?</h2>
+              <p className="text-white/55 text-sm mt-1">Select the option that best describes your experience</p>
+            </div>
             <ReactionButtons onReact={handleImpression} selected={impression?.score} />
           </motion.div>
         )}
