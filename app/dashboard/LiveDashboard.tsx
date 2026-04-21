@@ -292,27 +292,48 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
           </div>
         </div>
 
-        {/* ── Survey Score Averages + Top/Bottom 2 Box ── */}
+        {/* ── Survey Score Averages + Distribution ── */}
         {questionStats.length > 0 && (
           <div className="bg-ryobi-dark border border-white/10 p-5">
             <SectionHeader
               title="Survey Score Averages"
-              subtitle="Testers answered 4 statements on a 1–7 scale after each session. Top 2 Box = % scoring 6–7. Bottom 2 Box = % scoring 1–2."
+              subtitle="Testers answered 4 statements on a 1–7 scale after each session. Bars show score distribution — red = bottom box (1–2), amber = mid (3–5), yellow = top box (6–7)."
             />
-            <div className="space-y-6">
+
+            {/* Legend */}
+            <div className="flex items-center gap-5 mb-5 pl-1">
+              {[
+                { color: 'bg-red-500', label: 'Bottom Box  1–2' },
+                { color: 'bg-amber-400', label: 'Mid  3–5' },
+                { color: 'bg-ryobi-yellow', label: 'Top Box  6–7' },
+              ].map(l => (
+                <div key={l.label} className="flex items-center gap-1.5">
+                  <div className={`w-3 h-3 ${l.color}`} />
+                  <span className="text-white/55 text-[10px] uppercase tracking-wide">{l.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-5">
               {questionStats.map(stat => {
-                const scores = filteredSurvey.filter(r => r.question_key === stat.question_key).map(r => r.score)
-                const t2b = topTwoBox(scores)
-                const b2b = bottomTwoBox(scores)
-                const lowN = stat.n < MIN_N
+                const scores  = filteredSurvey.filter(r => r.question_key === stat.question_key).map(r => r.score)
+                const t2b     = topTwoBox(scores)
+                const b2b     = bottomTwoBox(scores)
+                const lowN    = stat.n < MIN_N
+                const n       = scores.length || 1
+                const pctBot  = Math.round(scores.filter(s => s <= 2).length / n * 100)
+                const pctMid  = Math.round(scores.filter(s => s >= 3 && s <= 5).length / n * 100)
+                const pctTop  = Math.round(scores.filter(s => s >= 6).length / n * 100)
                 return (
                   <div key={stat.question_key} className={lowN ? 'opacity-50' : ''}>
+                    {/* Question header */}
                     <div className="flex items-start justify-between mb-2 gap-4 flex-wrap">
                       <div className="flex-1 min-w-0">
                         <span className="text-white text-sm font-semibold leading-tight block">{stat.question_text}</span>
-                        <span className="text-white/50 text-xs">1 = strongly disagree · 7 = strongly agree · n={stat.n}</span>
-                        {lowN && <span className="text-amber-400 text-xs ml-2">⚠ Low sample — directional only</span>}
+                        <span className="text-white/50 text-xs">n={stat.n} · mean {stat.mean}/7 · median {stat.median}</span>
+                        {lowN && <span className="text-amber-400 text-xs ml-2">⚠ Low sample</span>}
                       </div>
+                      {/* T2B / B2B / Mean summary */}
                       <div className="flex gap-2 flex-shrink-0">
                         <div className="text-center px-3 py-1.5 border border-ryobi-yellow/30 bg-ryobi-yellow/10">
                           <div className="ryobi-heading text-lg text-ryobi-yellow leading-none">{t2b}%</div>
@@ -320,24 +341,35 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
                         </div>
                         <div className="text-center px-3 py-1.5 border border-red-500/30 bg-red-500/10">
                           <div className="ryobi-heading text-lg text-red-400 leading-none">{b2b}%</div>
-                          <div className="text-red-400/70 text-[9px] uppercase tracking-wider mt-0.5">Bottom 2 Box</div>
-                        </div>
-                        <div className="text-center px-3 py-1.5 border border-white/10 bg-white/5">
-                          <div className="ryobi-heading text-lg text-white leading-none">{stat.mean}<span className="text-white/40 text-xs">/7</span></div>
-                          <div className="text-white/50 text-[9px] uppercase tracking-wider mt-0.5">Mean</div>
+                          <div className="text-red-400/70 text-[9px] uppercase tracking-wider mt-0.5">Bot 2 Box</div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="relative h-2 bg-white/10 w-full">
-                      <div className="absolute inset-y-0 bg-ryobi-yellow/30"
-                        style={{ left: `${(stat.ci_lower / 7) * 100}%`, width: `${((stat.ci_upper - stat.ci_lower) / 7) * 100}%` }} />
-                      <div className="absolute inset-y-0 bg-ryobi-yellow"
-                        style={{ width: `${(stat.mean / 7) * 100}%` }} />
+                    {/* Stacked distribution bar */}
+                    <div className="flex h-7 w-full overflow-hidden gap-px">
+                      {pctBot > 0 && (
+                        <div className="bg-red-500 flex items-center justify-center text-[10px] font-bold text-white"
+                          style={{ width: `${pctBot}%` }}>
+                          {pctBot >= 7 ? `${pctBot}%` : ''}
+                        </div>
+                      )}
+                      {pctMid > 0 && (
+                        <div className="bg-amber-400 flex items-center justify-center text-[10px] font-bold text-black"
+                          style={{ width: `${pctMid}%` }}>
+                          {pctMid >= 7 ? `${pctMid}%` : ''}
+                        </div>
+                      )}
+                      {pctTop > 0 && (
+                        <div className="bg-ryobi-yellow flex items-center justify-center text-[10px] font-bold text-ryobi-black"
+                          style={{ width: `${pctTop}%` }}>
+                          {pctTop >= 7 ? `${pctTop}%` : ''}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex justify-between text-[10px] text-white/40 mt-1">
-                      <span>95% CI [{stat.ci_lower}–{stat.ci_upper}]</span>
-                      <span>Median {stat.median} · Std dev {stat.std_dev}</span>
+                    <div className="flex justify-between text-[10px] text-white/35 mt-1">
+                      <span>1 — Strongly Disagree</span>
+                      <span>7 — Strongly Agree</span>
                     </div>
                   </div>
                 )
@@ -356,9 +388,9 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
 
             <div className="grid grid-cols-3 gap-3 mb-6">
               {[
-                { label: 'Promoters',  sub: 'Scored 9–10', data: promoters,  color: 'border-ryobi-yellow/40 bg-ryobi-yellow/10', textColor: 'text-ryobi-yellow', formula: '% drives score up' },
-                { label: 'Passives',   sub: 'Scored 7–8',  data: passives,   color: 'border-white/20 bg-white/5',               textColor: 'text-white/70',     formula: 'Neutral — not counted' },
                 { label: 'Detractors', sub: 'Scored 0–6',  data: detractors, color: 'border-red-500/30 bg-red-500/10',           textColor: 'text-red-400',      formula: '% drives score down' },
+                { label: 'Passives',   sub: 'Scored 7–8',  data: passives,   color: 'border-white/20 bg-white/5',               textColor: 'text-white/70',     formula: 'Neutral — not counted' },
+                { label: 'Promoters',  sub: 'Scored 9–10', data: promoters,  color: 'border-ryobi-yellow/40 bg-ryobi-yellow/10', textColor: 'text-ryobi-yellow', formula: '% drives score up' },
               ].map(band => (
                 <div key={band.label} className={`border ${band.color} p-4`}>
                   <div className={`ryobi-heading text-2xl ${band.textColor} leading-none`}>
@@ -388,9 +420,9 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
 
             <div className="grid md:grid-cols-3 gap-4">
               {[
-                { label: 'Promoter Verbatims', data: promoters,  borderColor: 'border-ryobi-yellow/30', textColor: 'text-ryobi-yellow/80', prompt: '"What did you love most?"' },
-                { label: 'Passive Verbatims',  data: passives,   borderColor: 'border-white/15',        textColor: 'text-white/60',         prompt: '"What would move you higher?"' },
                 { label: 'Detractor Verbatims',data: detractors, borderColor: 'border-red-500/25',      textColor: 'text-red-400/80',        prompt: '"What was disappointing?"' },
+                { label: 'Passive Verbatims',  data: passives,   borderColor: 'border-white/15',        textColor: 'text-white/60',         prompt: '"What would move you higher?"' },
+                { label: 'Promoter Verbatims', data: promoters,  borderColor: 'border-ryobi-yellow/30', textColor: 'text-ryobi-yellow/80', prompt: '"What did you love most?"' },
               ].map(band => (
                 <div key={band.label}>
                   <div className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${band.textColor}`}>{band.label}</div>
