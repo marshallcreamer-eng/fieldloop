@@ -3,179 +3,186 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, LabelList, Cell,
+} from 'recharts'
 import type { Feedback, Product, AIInsight, QuestionStats } from '@/lib/types'
 import { SURVEY_QUESTIONS } from '@/lib/types'
-import { computeQuestionStats, computeNPS, welchTTest } from '@/lib/stats'
+import { computeQuestionStats, computeNPS, npsMarginOfError, welchTTest, npsCategory } from '@/lib/stats'
 import RyobiHeader from '@/components/RyobiHeader'
+import DemoNav from '@/components/DemoNav'
+
+interface NPSEntry { score: number; comment: string | null; product_id: string; session_date: string }
 
 interface Props {
   initialFeedback: Feedback[]
   products: Product[]
   initialInsights: AIInsight[]
   initialSurveyScores: Record<string, Record<string, number[]>>
+  npsData: NPSEntry[]
 }
 
 const REACTION_COLORS: Record<string, string> = {
-  love:    '#E1E723',
-  like:    '#77787B',
-  meh:     '#555',
-  dislike: '#ef4444',
+  love: '#E1E723', like: '#4A90D9', meh: '#77787B', dislike: '#ef4444',
 }
-
 const REACTION_LABELS: Record<string, string> = {
   love: 'Highly Positive', like: 'Positive', meh: 'Neutral', dislike: 'Negative',
 }
+const MIN_N = 5
 
-const MIN_N_FOR_STATS = 5
-
-// Extract a short, unique label from a product name — strips "RYOBI 40V HP Brushless" prefix
 function shortName(name: string): string {
-  const cleaned = name
-    .replace(/RYOBI\s+/i, '')
-    .replace(/40V\s+/i, '')
-    .replace(/HP\s+/i, '')
-    .replace(/Brushless\s+/i, '')
-    .replace(/\(.*?\)/g, '')
-    .trim()
-  const words = cleaned.split(' ').filter(Boolean)
-  return words.slice(0, 3).join(' ')
+  return name.replace(/RYOBI\s+/i,'').replace(/40V\s+/i,'').replace(/HP\s+/i,'').replace(/Brushless\s+/i,'').replace(/\(.*?\)/g,'').trim().split(' ').filter(Boolean).slice(0,3).join(' ')
 }
 
-function Pill({ text, tone }: { text: string; tone?: 'warn' | 'info' }) {
-  const colors = tone === 'warn' ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-700'
-  return <span className={`text-xs px-2 py-0.5 font-semibold rounded ${colors}`}>{text}</span>
+function topTwoBox(scores: number[]): number {
+  if (!scores.length) return 0
+  return Math.round(scores.filter(s => s >= 6).length / scores.length * 100)
+}
+function bottomTwoBox(scores: number[]): number {
+  if (!scores.length) return 0
+  return Math.round(scores.filter(s => s <= 2).length / scores.length * 100)
 }
 
-function SectionHeader({ title, subtitle, badge }: { title: string; subtitle: string; badge?: React.ReactNode }) {
+function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="mb-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <h3 className="ryobi-heading text-base text-ryobi-dark border-l-4 border-ryobi-yellow pl-3">{title}</h3>
-        {badge}
-      </div>
-      <p className="text-ryobi-gray text-xs mt-1 pl-4 leading-relaxed">{subtitle}</p>
+    <div className="mb-5">
+      <h3 className="ryobi-heading text-base text-white border-l-4 border-ryobi-yellow pl-3 tracking-widest">{title}</h3>
+      <p className="text-white/55 text-xs mt-1 pl-4 leading-relaxed">{subtitle}</p>
     </div>
   )
 }
 
-export default function LiveDashboard({ initialFeedback, products, initialInsights, initialSurveyScores }: Props) {
-  const [feedback, setFeedback] = useState<Feedback[]>(initialFeedback)
-  const [insights, setInsights] = useState<AIInsight[]>(initialInsights)
-  const [surveyScores] = useState(initialSurveyScores)
-  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'week'>('week')
+function ReactionBadge({ reaction }: { reaction: string }) {
+  const styles: Record<string, string> = {
+    love:    'bg-ryobi-yellow/20 text-ryobi-yellow border border-ryobi-yellow/40',
+    like:    'bg-blue-500/20 text-blue-300 border border-blue-500/40',
+    meh:     'bg-white/10 text-white/60 border border-white/20',
+    dislike: 'bg-red-500/20 text-red-400 border border-red-500/40',
+  }
+  return (
+    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 ${styles[reaction] ?? styles.meh}`}>
+      {REACTION_LABELS[reaction] ?? reaction}
+    </span>
+  )
+}
+
+const tooltipStyle = { background: '#111', border: '1px solid rgba(225,231,35,0.4)', color: '#fff', fontSize: 11, borderRadius: 0 }
+
+export default function LiveDashboard({ initialFeedback, products, initialInsights, initialSurveyScores, npsData }: Props) {
+  const [feedback, setFeedback]     = useState<Feedback[]>(initialFeedback)
+  const [insights, setInsights]     = useState<AIInsight[]>(initialInsights)
+  const [surveyScores]              = useState(initialSurveyScores)
+  const [dateFilter, setDateFilter] = useState<'all'|'today'|'yesterday'|'week'>('week')
   const [selectedProduct, setSelectedProduct] = useState<string>('all')
-  const [loadingInsight, setLoadingInsight] = useState<string | null>(null)
-  const [flashCount, setFlashCount] = useState(false)
-  const [sigTestProductA, setSigTestProductA] = useState(products[0]?.id ?? '')
-  const [sigTestProductB, setSigTestProductB] = useState(products[1]?.id ?? '')
+  const [loadingInsight, setLoadingInsight]   = useState<string|null>(null)
+  const [flashCount, setFlashCount]           = useState(false)
+  const [sigTestA, setSigTestA] = useState(products[0]?.id ?? '')
+  const [sigTestB, setSigTestB] = useState(products[1]?.id ?? '')
 
   useEffect(() => {
-    const channel = supabase
-      .channel('feedback-live')
+    const ch = supabase.channel('feedback-live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feedback' }, (payload) => {
         setFeedback(prev => [payload.new as Feedback, ...prev])
         setFlashCount(true)
         setTimeout(() => setFlashCount(false), 600)
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+      }).subscribe()
+    return () => { supabase.removeChannel(ch) }
   }, [])
 
   const today     = new Date().toISOString().split('T')[0]
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
-  const weekAgo   = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const weekAgo   = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]
 
   const filtered = feedback.filter(f => {
-    const dateOk = dateFilter === 'all'       ? true
-      : dateFilter === 'today'     ? f.session_date === today
-      : dateFilter === 'yesterday' ? f.session_date === yesterday
-      : f.session_date >= weekAgo
+    const dateOk = dateFilter === 'all' ? true : dateFilter === 'today' ? f.session_date === today : dateFilter === 'yesterday' ? f.session_date === yesterday : f.session_date >= weekAgo
     return dateOk && (selectedProduct === 'all' || f.product_id === selectedProduct)
   })
 
-  const reactionData = (['love', 'like', 'meh', 'dislike'] as const).map(r => ({
-    name: REACTION_LABELS[r],
+  // Reaction distribution
+  const reactionData = (['love','like','meh','dislike'] as const).map(r => ({
+    name:  REACTION_LABELS[r],
     value: filtered.filter(f => f.reaction === r).length,
-    key: r,
+    pct:   filtered.length ? Math.round(filtered.filter(f => f.reaction === r).length / filtered.length * 100) : 0,
+    key:   r,
+    fill:  REACTION_COLORS[r],
   })).filter(d => d.value > 0)
 
   const productActivity = products.map(p => ({
-    name: shortName(p.name),
+    name:     shortName(p.name),
     fullName: p.name,
-    count: feedback.filter(f => f.product_id === p.id).length,
+    count:    feedback.filter(f => f.product_id === p.id).length,
   }))
 
-  async function generateInsight(productId: string) {
-    setLoadingInsight(productId)
-    const res = await fetch('/api/insights', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_id: productId }),
-    })
-    const data = await res.json()
-    if (data.id) setInsights(prev => [data, ...prev.filter(i => i.product_id !== productId)])
-    setLoadingInsight(null)
-  }
-
+  // Survey stats
   const statsProductId = selectedProduct === 'all' ? null : selectedProduct
-  const questionStats: QuestionStats[] = SURVEY_QUESTIONS.map(q => {
+  const questionStats: QuestionStats[] = SURVEY_QUESTIONS.filter(q => q.scale !== 'nps').map(q => {
     const scores = statsProductId
       ? (surveyScores[statsProductId]?.[q.key] ?? [])
       : Object.values(surveyScores).flatMap(ps => ps[q.key] ?? [])
     return computeQuestionStats(q.key, q.text, scores)
   }).filter(Boolean) as QuestionStats[]
 
-  const npsScores = statsProductId
+  // NPS
+  const allNpsScores = statsProductId
     ? (surveyScores[statsProductId]?.['nps'] ?? [])
     : Object.values(surveyScores).flatMap(ps => ps['nps'] ?? [])
-  const npsScore = computeNPS(npsScores)
+  const npsScore = computeNPS(allNpsScores)
+  const npsMoe   = npsMarginOfError(allNpsScores)
 
-  const sigTests = sigTestProductA && sigTestProductB && sigTestProductA !== sigTestProductB
+  const filteredNps = npsData.filter(e =>
+    (selectedProduct === 'all' || e.product_id === selectedProduct) && e.product_id
+  )
+  const promoters  = filteredNps.filter(e => npsCategory(e.score) === 'promoter')
+  const passives   = filteredNps.filter(e => npsCategory(e.score) === 'passive')
+  const detractors = filteredNps.filter(e => npsCategory(e.score) === 'detractor')
+  const npsTotal   = filteredNps.length
+
+  // Significance tests
+  const sigTests = sigTestA && sigTestB && sigTestA !== sigTestB
     ? SURVEY_QUESTIONS.filter(q => q.scale !== 'nps').map(q => {
-        const sA = surveyScores[sigTestProductA]?.[q.key] ?? []
-        const sB = surveyScores[sigTestProductB]?.[q.key] ?? []
-        return welchTTest(q.key, sigTestProductA, sA, sigTestProductB, sB)
-      }).filter(Boolean)
-    : []
+        const sA = surveyScores[sigTestA]?.[q.key] ?? []
+        const sB = surveyScores[sigTestB]?.[q.key] ?? []
+        return welchTTest(q.key, sigTestA, sA, sigTestB, sB)
+      }).filter(Boolean) : []
 
-  const posRate = filtered.length
-    ? Math.round((filtered.filter(f => f.reaction === 'love' || f.reaction === 'like').length / filtered.length) * 100)
-    : 0
+  const posRate = filtered.length ? Math.round(filtered.filter(f => f.reaction === 'love' || f.reaction === 'like').length / filtered.length * 100) : 0
 
-  const tooltipStyle = { background: '#1A1A1A', border: '1px solid #E1E723', color: '#fff', fontSize: 12 }
+  async function generateInsight(productId: string) {
+    setLoadingInsight(productId)
+    const res  = await fetch('/api/insights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: productId }) })
+    const data = await res.json()
+    if (data.id) setInsights(prev => [data, ...prev.filter(i => i.product_id !== productId)])
+    setLoadingInsight(null)
+  }
 
   return (
-    <div className="min-h-screen bg-ryobi-offwhite">
+    <div className="min-h-screen bg-ryobi-black">
       <RyobiHeader
-        subtitle="Advanced Engineering — Research Dashboard"
+        subtitle="Research Dashboard"
         right={
-          <div className="flex items-center gap-4">
-            <a href="/analytics" className="text-ryobi-gray text-xs uppercase tracking-widest font-semibold hover:text-ryobi-yellow transition-colors">
-              Analytics
-            </a>
-            <a href="/admin/seed" className="text-ryobi-gray text-xs uppercase tracking-widest font-semibold hover:text-ryobi-yellow transition-colors">
-              Seed Data
-            </a>
+          <div className="flex items-center gap-5">
+            <a href="/admin/seed" className="text-white/50 text-xs uppercase tracking-widest hover:text-ryobi-yellow transition-colors">Seed Data</a>
             <div className="flex items-center gap-2">
-              <span className="text-ryobi-gray text-xs uppercase tracking-wider">Live</span>
-              <span className="w-2 h-2 rounded-full bg-ryobi-yellow animate-pulse" />
+              <span className="text-white/50 text-xs uppercase tracking-wider">Live</span>
+              <span className="w-2 h-2 bg-ryobi-yellow animate-pulse" />
             </div>
           </div>
         }
       />
+      <DemoNav />
 
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2 items-center">
+        {/* ── Filters ── */}
+        <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <div className="text-xs text-ryobi-gray uppercase tracking-widest mb-1">Date range</div>
-            <div className="flex border border-ryobi-dark overflow-hidden">
-              {(['all', 'today', 'yesterday', 'week'] as const).map(d => (
+            <div className="text-white/55 text-[10px] uppercase tracking-widest mb-1.5">Date Range</div>
+            <div className="flex border border-white/15 overflow-hidden">
+              {(['all','today','yesterday','week'] as const).map(d => (
                 <button key={d} onClick={() => setDateFilter(d)}
                   className={`px-3 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${
-                    dateFilter === d ? 'bg-ryobi-yellow text-ryobi-black' : 'bg-white text-ryobi-gray hover:bg-ryobi-dark hover:text-white'
+                    dateFilter === d ? 'bg-ryobi-yellow text-ryobi-black' : 'bg-ryobi-dark text-white/60 hover:text-white hover:bg-white/10'
                   }`}>
                   {d === 'all' ? 'All Time' : d === 'week' ? 'Last 7 Days' : d.charAt(0).toUpperCase() + d.slice(1)}
                 </button>
@@ -183,122 +190,125 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
             </div>
           </div>
           <div>
-            <div className="text-xs text-ryobi-gray uppercase tracking-widest mb-1">Product filter</div>
+            <div className="text-white/55 text-[10px] uppercase tracking-widest mb-1.5">Product</div>
             <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)}
-              className="text-xs border border-ryobi-dark px-3 py-2 bg-white text-ryobi-dark font-semibold uppercase tracking-wide focus:outline-none focus:border-ryobi-yellow h-[38px]">
+              className="text-xs border border-white/15 px-3 py-2 bg-ryobi-dark text-white font-semibold uppercase tracking-wide focus:outline-none focus:border-ryobi-yellow h-[38px]">
               <option value="all">All Products</option>
               {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
         </div>
 
-        {/* KPI strip */}
+        {/* ── KPI Strip ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-ryobi-dark border-l-4 border-ryobi-yellow p-4">
-            <div className="text-ryobi-gray text-xs uppercase tracking-widest mb-1">Submissions</div>
-            <div className={`ryobi-heading text-3xl transition-colors ${flashCount ? 'text-ryobi-yellow' : 'text-white'}`}>{filtered.length}</div>
-            <div className="text-ryobi-gray text-xs mt-0.5">Total tester sessions in this window · {feedback.filter(f => f.session_date === today).length} today</div>
-          </div>
-          <div className="bg-ryobi-dark border-l-4 border-ryobi-yellow p-4">
-            <div className="text-ryobi-gray text-xs uppercase tracking-widest mb-1">Products in Field</div>
-            <div className="ryobi-heading text-3xl text-white">{products.length}</div>
-            <div className="text-ryobi-gray text-xs mt-0.5">Active beta units being tested</div>
-          </div>
-          <div className="bg-ryobi-dark border-l-4 border-ryobi-yellow p-4">
-            <div className="text-ryobi-gray text-xs uppercase tracking-widest mb-1">NPS Score</div>
-            <div className={`ryobi-heading text-3xl ${npsScore >= 0 ? 'text-ryobi-yellow' : 'text-red-400'}`}>{npsScore > 0 ? '+' : ''}{npsScore}</div>
-            <div className="text-ryobi-gray text-xs mt-0.5">
-              Net Promoter Score (−100 to +100) · above 0 is positive · n={npsScores.length}
-              {npsScores.length < MIN_N_FOR_STATS && <span className="text-amber-400 ml-1">⚠ too few responses</span>}
+          {[
+            { label: 'Submissions', value: filtered.length, sub: `${feedback.filter(f => f.session_date === today).length} submitted today`, flash: flashCount, color: flashCount ? 'text-ryobi-yellow' : 'text-white' },
+            { label: 'Products in Field', value: products.length, sub: 'Active beta units', color: 'text-white' },
+            { label: 'NPS Score', value: `${npsScore > 0 ? '+' : ''}${npsScore}`, sub: `±${npsMoe} margin of error · n=${allNpsScores.length}`, color: npsScore >= 0 ? 'text-ryobi-yellow' : 'text-red-400' },
+            { label: 'Top 2 Box Rate', value: `${posRate}%`, sub: 'Highly Positive + Positive responses', color: posRate >= 60 ? 'text-ryobi-yellow' : 'text-red-400' },
+          ].map(k => (
+            <div key={k.label} className="bg-ryobi-dark border border-white/10 border-l-4 border-l-ryobi-yellow p-4">
+              <div className="text-white/55 text-[10px] uppercase tracking-widest mb-1">{k.label}</div>
+              <div className={`ryobi-heading text-3xl transition-colors ${k.color}`}>{k.value}</div>
+              <div className="text-white/45 text-xs mt-0.5 leading-snug">{k.sub}</div>
             </div>
-          </div>
-          <div className="bg-ryobi-dark border-l-4 border-ryobi-yellow p-4">
-            <div className="text-ryobi-gray text-xs uppercase tracking-widest mb-1">Positive Rate</div>
-            <div className={`ryobi-heading text-3xl ${posRate >= 60 ? 'text-ryobi-yellow' : 'text-red-400'}`}>{posRate}%</div>
-            <div className="text-ryobi-gray text-xs mt-0.5">% of testers who reacted Love or Like</div>
-          </div>
+          ))}
         </div>
 
-        {/* Charts */}
+        {/* ── Charts row ── */}
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="bg-white border border-gray-200 p-5">
+
+          {/* Reaction distribution */}
+          <div className="bg-ryobi-dark border border-white/10 p-5">
             <SectionHeader
-              title="How Testers Reacted"
-              subtitle="Each tester swipes to rate a product. This shows the split across all four reaction types for the selected time window."
+              title="Reaction Distribution"
+              subtitle="Breakdown of how testers rated products across all four response types for the selected window."
             />
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={reactionData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}
-                  label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
-                  {reactionData.map(entry => (
-                    <Cell key={entry.key} fill={REACTION_COLORS[entry.key] || '#444'} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} />
-              </PieChart>
+            <ResponsiveContainer width="100%" height={190}>
+              <BarChart data={reactionData} layout="vertical" margin={{ left: 10, right: 40 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: '#ffffff60' }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#ffffff80' }} width={95} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v} responses`, '']} />
+                <Bar dataKey="value" radius={0}>
+                  {reactionData.map(entry => <Cell key={entry.key} fill={entry.fill} />)}
+                  <LabelList dataKey="pct" position="right" formatter={(v: any) => `${v}%`} style={{ fill: '#ffffff80', fontSize: 10 }} />
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="bg-white border border-gray-200 p-5">
+          {/* Submissions per product */}
+          <div className="bg-ryobi-dark border border-white/10 p-5">
             <SectionHeader
-              title="Total Submissions per Product"
-              subtitle="How many tester sessions have been logged for each product across all time — not filtered by date."
+              title="Submissions per Product"
+              subtitle="Total tester sessions logged per product across all time — independent of the date filter above."
             />
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={productActivity} margin={{ left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#77787B' }} />
-                <YAxis tick={{ fontSize: 10, fill: '#77787B' }} />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  formatter={(val: any) => [val, 'Submissions']}
-                  labelFormatter={(label: any) => {
-                    const p = productActivity.find(p => p.name === label)
-                    return p?.fullName ?? label
-                  }}
+            <ResponsiveContainer width="100%" height={190}>
+              <BarChart data={productActivity} margin={{ left: -10, top: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#ffffff70' }} />
+                <YAxis tick={{ fontSize: 10, fill: '#ffffff60' }} />
+                <Tooltip contentStyle={tooltipStyle}
+                  formatter={(v: any) => [v, 'Sessions']}
+                  labelFormatter={(l: any) => productActivity.find(p => p.name === l)?.fullName ?? l}
                 />
-                <Bar dataKey="count" fill="#E1E723" />
+                <Bar dataKey="count" fill="#E1E723">
+                  <LabelList dataKey="count" position="top" style={{ fill: '#E1E723', fontSize: 10, fontWeight: 700 }} />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Survey stats */}
+        {/* ── Survey Score Averages + Top/Bottom 2 Box ── */}
         {questionStats.length > 0 && (
-          <div className="bg-white border border-gray-200 p-5">
+          <div className="bg-ryobi-dark border border-white/10 p-5">
             <SectionHeader
               title="Survey Score Averages"
-              subtitle="After each swipe, testers answer 5 short questions. Scores are on a 1–7 scale (1 = strongly disagree, 7 = strongly agree) except NPS which uses 0–10. The shaded band shows the 95% confidence interval — the range where the true average likely falls."
-              badge={questionStats.some(s => s.n < MIN_N_FOR_STATS) ? <Pill text="⚠ Low sample on some questions" tone="warn" /> : undefined}
+              subtitle="Testers answered 4 statements on a 1–7 scale after each product session. Top 2 Box = % scoring 6 or 7 (strongly favorable). Bottom 2 Box = % scoring 1 or 2."
             />
-            <div className="space-y-5">
+            <div className="space-y-6">
               {questionStats.map(stat => {
-                const lowN = stat.n < MIN_N_FOR_STATS
-                const scale = SURVEY_QUESTIONS.find(q => q.key === stat.question_key)?.scale === 'nps' ? 10 : 7
+                const scores  = statsProductId ? (surveyScores[statsProductId]?.[stat.question_key] ?? []) : Object.values(surveyScores).flatMap(ps => ps[stat.question_key] ?? [])
+                const t2b     = topTwoBox(scores)
+                const b2b     = bottomTwoBox(scores)
+                const lowN    = stat.n < MIN_N
                 return (
-                  <div key={stat.question_key} className={lowN ? 'opacity-60' : ''}>
-                    <div className="flex items-start justify-between mb-1.5 gap-4">
-                      <div>
-                        <span className="text-sm font-semibold text-ryobi-dark leading-tight block">{stat.question_text}</span>
-                        <span className="text-xs text-ryobi-gray">{scale === 10 ? '0–10 · 0=not at all, 10=extremely likely' : '1–7 · 1=strongly disagree, 7=strongly agree'}</span>
+                  <div key={stat.question_key} className={lowN ? 'opacity-50' : ''}>
+                    <div className="flex items-start justify-between mb-2 gap-4 flex-wrap">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white text-sm font-semibold leading-tight block">{stat.question_text}</span>
+                        <span className="text-white/50 text-xs">1 = strongly disagree · 7 = strongly agree · n={stat.n}</span>
+                        {lowN && <span className="text-amber-400 text-xs ml-2">⚠ Low sample — directional only</span>}
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <span className="ryobi-heading text-xl text-ryobi-dark">{stat.mean}</span>
-                        <span className="text-ryobi-gray text-xs ml-1">/ {scale}</span>
-                        <div className="text-xs text-ryobi-gray">
-                          95% CI [{stat.ci_lower}–{stat.ci_upper}] · {stat.n} responses
-                          {lowN && <span className="text-amber-500 ml-1">⚠ unreliable at this n</span>}
+                      {/* Top/Bottom 2 Box callouts */}
+                      <div className="flex gap-2 flex-shrink-0">
+                        <div className="text-center px-3 py-1.5 border border-ryobi-yellow/30 bg-ryobi-yellow/10">
+                          <div className="ryobi-heading text-lg text-ryobi-yellow leading-none">{t2b}%</div>
+                          <div className="text-ryobi-yellow/70 text-[9px] uppercase tracking-wider mt-0.5">Top 2 Box</div>
+                        </div>
+                        <div className="text-center px-3 py-1.5 border border-red-500/30 bg-red-500/10">
+                          <div className="ryobi-heading text-lg text-red-400 leading-none">{b2b}%</div>
+                          <div className="text-red-400/70 text-[9px] uppercase tracking-wider mt-0.5">Bottom 2 Box</div>
+                        </div>
+                        <div className="text-center px-3 py-1.5 border border-white/10 bg-white/5">
+                          <div className="ryobi-heading text-lg text-white leading-none">{stat.mean}<span className="text-white/40 text-xs">/7</span></div>
+                          <div className="text-white/50 text-[9px] uppercase tracking-wider mt-0.5">Mean</div>
                         </div>
                       </div>
                     </div>
-                    <div className="relative h-2 bg-gray-100 w-full">
-                      <div className="absolute inset-y-0 bg-ryobi-yellow" style={{ width: `${(stat.mean / scale) * 100}%` }} />
-                      <div className="absolute inset-y-0 bg-black/20"
-                        style={{ left: `${(stat.ci_lower / scale) * 100}%`, width: `${((stat.ci_upper - stat.ci_lower) / scale) * 100}%` }} />
+
+                    {/* Score bar with CI */}
+                    <div className="relative h-2 bg-white/10 w-full">
+                      <div className="absolute inset-y-0 bg-ryobi-yellow/30"
+                        style={{ left: `${(stat.ci_lower / 7) * 100}%`, width: `${((stat.ci_upper - stat.ci_lower) / 7) * 100}%` }} />
+                      <div className="absolute inset-y-0 bg-ryobi-yellow"
+                        style={{ width: `${(stat.mean / 7) * 100}%` }} />
                     </div>
-                    <div className="flex justify-between text-xs text-ryobi-gray mt-1">
-                      <span>Std dev {stat.std_dev} <span className="font-normal opacity-70">(spread of answers)</span></span>
-                      <span>Median {stat.median} <span className="font-normal opacity-70">(midpoint score)</span></span>
+                    <div className="flex justify-between text-[10px] text-white/40 mt-1">
+                      <span>95% CI [{stat.ci_lower}–{stat.ci_upper}]</span>
+                      <span>Median {stat.median} · Std dev {stat.std_dev}</span>
                     </div>
                   </div>
                 )
@@ -307,108 +317,152 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
           </div>
         )}
 
-        {/* Significance testing */}
-        {products.length >= 2 && (
-          <div className="bg-white border border-gray-200 p-5">
+        {/* ── NPS Deep Dive ── */}
+        {allNpsScores.length > 0 && (
+          <div className="bg-ryobi-dark border border-white/10 p-5">
             <SectionHeader
-              title="Are These Products Actually Different? (Significance Test)"
-              subtitle="A Welch's t-test checks whether the score gap between two products is real or just random chance. 'p < 0.05' means there's less than a 5% chance the difference happened by luck — it's statistically significant. 'n.s.' means not significant: the difference could just be noise."
-              badge={
-                (() => {
-                  if (!sigTestProductA || !sigTestProductB) return undefined
-                  const minN = Math.min(
-                    ...SURVEY_QUESTIONS.filter(q => q.scale !== 'nps').map(q =>
-                      Math.min(surveyScores[sigTestProductA]?.[q.key]?.length ?? 0, surveyScores[sigTestProductB]?.[q.key]?.length ?? 0)
-                    )
-                  )
-                  return minN < MIN_N_FOR_STATS ? <Pill text={`⚠ Sample below ${MIN_N_FOR_STATS} — results unreliable`} tone="warn" /> : undefined
-                })()
-              }
+              title="Net Promoter Score — Deep Dive"
+              subtitle={`NPS = % Promoters − % Detractors. Scale: −100 to +100. Above 0 is positive. Current score: ${npsScore > 0 ? '+' : ''}${npsScore} (±${npsMoe} MoE, n=${npsTotal})`}
+            />
+
+            {/* Band summary bar */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              {[
+                { label: 'Promoters', sub: 'Scored 9–10', data: promoters, color: 'border-ryobi-yellow/40 bg-ryobi-yellow/10', textColor: 'text-ryobi-yellow', formula: '% drives score up' },
+                { label: 'Passives',  sub: 'Scored 7–8',  data: passives,  color: 'border-white/20 bg-white/5',              textColor: 'text-white/70',      formula: 'Neutral — not counted' },
+                { label: 'Detractors',sub: 'Scored 0–6',  data: detractors,color: 'border-red-500/30 bg-red-500/10',          textColor: 'text-red-400',       formula: '% drives score down' },
+              ].map(band => (
+                <div key={band.label} className={`border ${band.color} p-4`}>
+                  <div className={`ryobi-heading text-2xl ${band.textColor} leading-none`}>
+                    {npsTotal ? Math.round(band.data.length / npsTotal * 100) : 0}%
+                  </div>
+                  <div className={`text-xs font-bold uppercase tracking-widest mt-1 ${band.textColor}`}>{band.label}</div>
+                  <div className="text-white/45 text-[10px] mt-0.5">{band.sub} · n={band.data.length}</div>
+                  <div className="text-white/30 text-[9px] mt-1 italic">{band.formula}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Visual score bar */}
+            {npsTotal > 0 && (
+              <div className="mb-6">
+                <div className="flex h-2 rounded-none overflow-hidden gap-0.5">
+                  <div className="bg-red-500/70 transition-all" style={{ width: `${Math.round(detractors.length / npsTotal * 100)}%` }} />
+                  <div className="bg-white/20 transition-all" style={{ width: `${Math.round(passives.length / npsTotal * 100)}%` }} />
+                  <div className="bg-ryobi-yellow transition-all" style={{ width: `${Math.round(promoters.length / npsTotal * 100)}%` }} />
+                </div>
+                <div className="flex justify-between text-[10px] text-white/40 mt-1">
+                  <span>Detractors {Math.round(detractors.length / npsTotal * 100)}%</span>
+                  <span>Passives {Math.round(passives.length / npsTotal * 100)}%</span>
+                  <span>Promoters {Math.round(promoters.length / npsTotal * 100)}%</span>
+                </div>
+              </div>
+            )}
+
+            {/* Verbatim quotes per band */}
+            <div className="grid md:grid-cols-3 gap-4">
+              {[
+                { label: 'Promoter Verbatims', data: promoters, borderColor: 'border-ryobi-yellow/30', textColor: 'text-ryobi-yellow/80', prompt: '"What did you love most?"' },
+                { label: 'Passive Verbatims',  data: passives,  borderColor: 'border-white/15',        textColor: 'text-white/60',         prompt: '"What would move you higher?"' },
+                { label: 'Detractor Verbatims',data: detractors,borderColor: 'border-red-500/25',      textColor: 'text-red-400/80',        prompt: '"What was disappointing?"' },
+              ].map(band => (
+                <div key={band.label}>
+                  <div className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${band.textColor}`}>{band.label}</div>
+                  <div className={`text-white/30 text-[9px] italic mb-2`}>{band.prompt}</div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {band.data.filter(e => e.comment).slice(0, 8).map((e, i) => (
+                      <div key={i} className={`border-l-2 ${band.borderColor} pl-2 py-0.5`}>
+                        <p className="text-white/70 text-xs leading-snug">&ldquo;{e.comment}&rdquo;</p>
+                        <span className="text-white/30 text-[9px]">Score {e.score}</span>
+                      </div>
+                    ))}
+                    {band.data.filter(e => e.comment).length === 0 && (
+                      <p className="text-white/30 text-xs italic">No comments submitted yet for this band.</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Significance Testing ── */}
+        {products.length >= 2 && (
+          <div className="bg-ryobi-dark border border-white/10 p-5">
+            <SectionHeader
+              title="Statistical Significance — Product Comparison"
+              subtitle="Welch's t-test checks whether the score gap between two products is real or random noise. p < 0.05 means statistically significant. Select two products to compare."
             />
             <div className="flex gap-3 mb-5 flex-wrap items-center">
-              <div>
-                <div className="text-xs text-ryobi-gray uppercase tracking-widest mb-1">Product A</div>
-                <select value={sigTestProductA} onChange={e => setSigTestProductA(e.target.value)}
-                  className="text-xs border border-ryobi-dark px-3 py-2 bg-white font-semibold focus:outline-none focus:border-ryobi-yellow">
-                  {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-              <span className="text-ryobi-gray self-end pb-2 font-bold">vs</span>
-              <div>
-                <div className="text-xs text-ryobi-gray uppercase tracking-widest mb-1">Product B</div>
-                <select value={sigTestProductB} onChange={e => setSigTestProductB(e.target.value)}
-                  className="text-xs border border-ryobi-dark px-3 py-2 bg-white font-semibold focus:outline-none focus:border-ryobi-yellow">
-                  {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
+              {[{ state: sigTestA, setter: setSigTestA, label: 'Product A' }, { state: sigTestB, setter: setSigTestB, label: 'Product B' }].map(({ state, setter, label }) => (
+                <div key={label}>
+                  <div className="text-white/55 text-[10px] uppercase tracking-widest mb-1">{label}</div>
+                  <select value={state} onChange={e => setter(e.target.value)}
+                    className="text-xs border border-white/15 px-3 py-2 bg-ryobi-dark text-white font-semibold focus:outline-none focus:border-ryobi-yellow">
+                    {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+              ))}
+              <span className="text-white/40 self-end pb-2 font-bold">vs</span>
             </div>
             <div className="space-y-1">
               {(sigTests as NonNullable<typeof sigTests[0]>[]).map(test => {
-                const nA = surveyScores[sigTestProductA]?.[test.question_key]?.length ?? 0
-                const nB = surveyScores[sigTestProductB]?.[test.question_key]?.length ?? 0
-                const lowN = nA < MIN_N_FOR_STATS || nB < MIN_N_FOR_STATS
+                const nA = surveyScores[sigTestA]?.[test.question_key]?.length ?? 0
+                const nB = surveyScores[sigTestB]?.[test.question_key]?.length ?? 0
+                const lowN = nA < MIN_N || nB < MIN_N
                 return (
                   <div key={test.question_key}
-                    className={`flex items-center justify-between p-3 text-sm border-l-4 ${
-                      test.significant ? 'border-ryobi-yellow bg-amber-50' : 'border-transparent bg-gray-50'
-                    } ${lowN ? 'opacity-50' : ''}`}>
+                    className={`flex items-center justify-between p-3 border-l-4 ${test.significant ? 'border-ryobi-yellow bg-ryobi-yellow/5' : 'border-transparent bg-white/5'} ${lowN ? 'opacity-50' : ''}`}>
                     <div>
-                      <span className="text-ryobi-dark font-semibold text-xs block">{SURVEY_QUESTIONS.find(q => q.key === test.question_key)?.text}</span>
-                      <span className="text-ryobi-gray text-xs">n={nA} vs n={nB}</span>
+                      <span className="text-white text-xs font-semibold block">{SURVEY_QUESTIONS.find(q => q.key === test.question_key)?.text}</span>
+                      <span className="text-white/45 text-[10px]">n={nA} vs n={nB}</span>
                     </div>
                     <div className="ml-4 text-right flex-shrink-0">
-                      <span className={`ryobi-heading text-sm block ${test.significant ? 'text-ryobi-dark' : 'text-ryobi-gray'}`}>
-                        {test.significant ? '★ Significant difference' : 'No significant difference'}
+                      <span className={`ryobi-heading text-xs block ${test.significant ? 'text-ryobi-yellow' : 'text-white/50'}`}>
+                        {test.significant ? '★ Significant' : 'Not significant'}
                       </span>
-                      <span className="text-xs text-ryobi-gray">
-                        t-stat={test.t_statistic} · p={test.p_value}
-                        {lowN && <span className="text-amber-500 ml-1">⚠ low n</span>}
-                      </span>
+                      <span className="text-white/40 text-[10px]">t={test.t_statistic} · p={test.p_value}</span>
                     </div>
                   </div>
                 )
               })}
-              {sigTests.length === 0 && (
-                <p className="text-sm text-ryobi-gray">Select two different products above to compare them.</p>
-              )}
+              {sigTests.length === 0 && <p className="text-white/40 text-xs">Select two different products above to compare.</p>}
             </div>
           </div>
         )}
 
-        {/* AI insights */}
-        <div className="bg-ryobi-dark border border-ryobi-muted p-5">
+        {/* ── AI Research Synthesis ── */}
+        <div className="bg-ryobi-dark border border-white/10 p-5">
           <SectionHeader
             title="AI Research Synthesis"
-            subtitle="Click Generate on any product to have Claude AI read all tester comments and produce a 3-bullet research summary, top theme, and sentiment score. Results are cached daily — re-generate to refresh."
+            subtitle="Claude AI reads all tester comments and generates a research summary, top theme, and sentiment score. Click Generate to run. Results are cached daily."
           />
           <div className="grid md:grid-cols-3 gap-3">
             {products.map(p => {
-              const insight = insights.find(i => i.product_id === p.id)
+              const insight   = insights.find(i => i.product_id === p.id)
               const isLoading = loadingInsight === p.id
               return (
-                <div key={p.id} className="border border-ryobi-muted p-4 bg-black/30">
-                  <div className="ryobi-heading text-sm text-white mb-1">{p.name}</div>
-                  <div className="text-ryobi-gray text-xs mb-3">{p.sku}</div>
+                <div key={p.id} className="border border-white/10 p-4 bg-black/30">
+                  <div className="ryobi-heading text-xs text-white mb-0.5 leading-snug">{p.name}</div>
+                  <div className="text-white/40 text-[10px] mb-3 uppercase tracking-widest">{p.sku}</div>
                   {insight ? (
                     <>
-                      <div className="text-xs font-bold text-ryobi-black bg-ryobi-yellow px-2 py-0.5 w-fit mb-2 uppercase tracking-wide">
-                        Top theme: {insight.top_theme}
+                      <div className="text-[10px] font-black text-ryobi-black bg-ryobi-yellow px-2 py-0.5 w-fit mb-3 uppercase tracking-wider">
+                        {insight.top_theme}
                       </div>
-                      <div className="text-xs text-ryobi-gray leading-relaxed whitespace-pre-line">{insight.summary}</div>
-                      <div className="text-xs text-ryobi-gray mt-3 border-t border-ryobi-muted pt-2 flex justify-between">
-                        <span>Sentiment score</span>
-                        <span className={`font-bold ${(insight.sentiment_score ?? 0) >= 6 ? 'text-ryobi-yellow' : 'text-amber-400'}`}>
-                          {insight.sentiment_score}/10
-                        </span>
+                      <div className="text-white/65 text-xs leading-relaxed whitespace-pre-line">{insight.summary}</div>
+                      <div className="text-[10px] text-white/40 mt-3 border-t border-white/10 pt-2 flex justify-between">
+                        <span>Sentiment</span>
+                        <span className={`font-bold ${(insight.sentiment_score ?? 0) >= 6 ? 'text-ryobi-yellow' : 'text-amber-400'}`}>{insight.sentiment_score}/10</span>
                       </div>
                       <button onClick={() => generateInsight(p.id)} disabled={isLoading}
-                        className="text-xs text-ryobi-gray mt-2 underline hover:text-white transition-colors disabled:opacity-50">
-                        {isLoading ? 'Regenerating...' : 'Regenerate'}
+                        className="text-[10px] text-white/40 mt-2 hover:text-white transition-colors disabled:opacity-50">
+                        {isLoading ? 'Regenerating...' : '↻ Regenerate'}
                       </button>
                     </>
                   ) : (
                     <button onClick={() => generateInsight(p.id)} disabled={isLoading}
-                      className="text-xs text-ryobi-black bg-ryobi-yellow px-3 py-2 font-bold uppercase tracking-wider hover:bg-white transition-colors disabled:opacity-50 w-full">
+                      className="text-xs text-ryobi-black bg-ryobi-yellow px-3 py-2 font-black ryobi-heading uppercase tracking-wider hover:bg-white transition-colors disabled:opacity-50 w-full">
                       {isLoading ? 'Generating...' : '✦ Generate AI Summary'}
                     </button>
                   )}
@@ -418,38 +472,37 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
           </div>
         </div>
 
-        {/* Live feed */}
-        <div className="bg-white border border-gray-200 p-5">
+        {/* ── Live Feed ── */}
+        <div className="bg-ryobi-dark border border-white/10 p-5">
           <SectionHeader
             title="Live Feedback Feed"
-            subtitle="Every submission from field testers appears here in real time. Updates instantly when a tester submits — no refresh needed."
+            subtitle="Every tester submission appears here in real time — no refresh needed. Updates instantly."
           />
-          <div className="space-y-1 max-h-80 overflow-y-auto">
-            {filtered.slice(0, 50).map(f => {
+          <div className="space-y-1 max-h-96 overflow-y-auto">
+            {filtered.slice(0, 60).map(f => {
               const product = products.find(p => p.id === f.product_id)
-              const emoji = { love: '❤️', like: '👍', meh: '😐', dislike: '👎' }[f.reaction]
-              const reactionLabel = REACTION_LABELS[f.reaction]
               return (
-                <div key={f.id} className="flex items-start gap-3 p-3 hover:bg-ryobi-offwhite transition-colors border-l-2 border-transparent hover:border-ryobi-yellow">
-                  <span className="text-lg flex-shrink-0">{emoji}</span>
+                <div key={f.id} className="flex items-start gap-3 p-3 hover:bg-white/5 transition-colors border-l-2 border-transparent hover:border-ryobi-yellow">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <ReactionBadge reaction={f.reaction} />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="ryobi-heading text-xs text-ryobi-dark">{shortName(product?.name ?? '')}</span>
-                      <span className="text-xs font-bold text-ryobi-gray">{reactionLabel}</span>
-                      {f.category && <span className="text-xs bg-ryobi-offwhite text-ryobi-gray px-1.5 py-0.5 capitalize">{f.category}</span>}
-                      <span className="text-xs text-ryobi-gray ml-auto">{f.session_date}</span>
+                      <span className="ryobi-heading text-xs text-white">{shortName(product?.name ?? '')}</span>
+                      {f.category && <span className="text-[10px] text-white/45 uppercase tracking-wider border border-white/15 px-1.5 py-0.5">{f.category}</span>}
+                      <span className="text-[10px] text-white/35 ml-auto">{f.session_date}</span>
                     </div>
-                    {f.comment && <p className="text-xs text-ryobi-gray mt-0.5 truncate">{f.comment}</p>}
+                    {f.comment && <p className="text-xs text-white/55 mt-0.5 line-clamp-1">&ldquo;{f.comment}&rdquo;</p>}
                   </div>
                 </div>
               )
             })}
             {filtered.length === 0 && (
-              <p className="text-sm text-ryobi-gray text-center py-8 uppercase tracking-widest">No feedback for this filter.</p>
+              <p className="text-white/40 text-sm text-center py-8 uppercase tracking-widest">No feedback for this filter.</p>
             )}
           </div>
-          {filtered.length > 50 && (
-            <p className="text-xs text-ryobi-gray text-center mt-2">Showing 50 of {filtered.length} — use the product filter to narrow down</p>
+          {filtered.length > 60 && (
+            <p className="text-white/35 text-[10px] text-center mt-2 uppercase tracking-widest">Showing 60 of {filtered.length} — use the product filter to narrow</p>
           )}
         </div>
 
