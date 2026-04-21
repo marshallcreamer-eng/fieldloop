@@ -145,7 +145,7 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
           </div>
         </div>
         {step !== 'done' && (
-          <div className="h-0.5 bg-ryobi-muted">
+          <div className="h-1 bg-ryobi-muted">
             <div className="h-full bg-ryobi-yellow transition-all duration-500"
               style={{ width: `${progressPct()}%` }} />
           </div>
@@ -170,21 +170,21 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
         {/* CATEGORY */}
         {step === 'category' && (
           <motion.div key="category" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="flex-1 flex flex-col items-center justify-center px-5 py-8 gap-5">
+            className="flex-1 flex flex-col items-center justify-center px-5 py-8 gap-6">
             <div className="text-center">
               <h2 className="ryobi-heading text-2xl text-white tracking-widest mb-1">What influenced your rating most?</h2>
-              <p className="text-white/65 text-sm uppercase tracking-widest">Select the primary factor</p>
+              <p className="text-white/55 text-sm uppercase tracking-widest">Select the primary factor</p>
             </div>
-            <div className="grid grid-cols-2 gap-2.5 w-full max-w-sm">
+            <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
               {CATEGORIES.map(c => {
                 const { Icon } = c
                 return (
                   <button key={c.value} onClick={() => handleCategory(c.value)}
-                    className="flex flex-col gap-2 p-4 bg-ryobi-dark border border-white/10 hover:border-ryobi-yellow hover:bg-black/60 transition-all active:scale-95 text-left group">
-                    <Icon size={18} className="text-ryobi-yellow/70 group-hover:text-ryobi-yellow transition-colors" />
+                    className="flex flex-col gap-2 p-5 bg-ryobi-dark border border-white/10 hover:border-ryobi-yellow hover:bg-black/60 transition-all active:scale-95 text-left group">
+                    <Icon size={20} className="text-ryobi-yellow/70 group-hover:text-ryobi-yellow transition-colors" />
                     <div>
                       <div className="ryobi-heading text-sm text-white tracking-wide">{c.label}</div>
-                      <div className="text-white/60 text-xs mt-0.5 leading-snug">{c.sub}</div>
+                      <div className="text-white/55 text-xs mt-0.5 leading-snug">{c.sub}</div>
                     </div>
                   </button>
                 )
@@ -197,9 +197,11 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
         {step === 'context' && (
           <motion.div key="context" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
             className="flex-1 flex flex-col items-center justify-center px-5 py-8 gap-6 max-w-sm mx-auto w-full">
+            <div className="w-full text-center">
+              <h2 className="ryobi-heading text-2xl text-white tracking-widest mb-1">What were you working on?</h2>
+              <p className="text-white/55 text-sm uppercase tracking-widest">Select your task and conditions</p>
+            </div>
             <div className="w-full">
-              <h2 className="ryobi-heading text-xl text-white tracking-widest mb-1 text-center">What were you doing?</h2>
-              <p className="text-white/60 text-sm text-center mb-4">Select the task you were working on</p>
               <div className="grid grid-cols-2 gap-2">
                 {TASK_TYPES.map(t => (
                   <button key={t.value} onClick={() => setTaskType(t.value)}
@@ -214,8 +216,8 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
               </div>
             </div>
             <div className="w-full">
-              <p className="text-white/65 text-sm font-semibold uppercase tracking-widest mb-3">
-                Conditions <span className="font-normal text-white/40">(select all that apply)</span>
+              <p className="text-white/55 text-xs font-semibold uppercase tracking-widest mb-3">
+                Working conditions <span className="font-normal text-white/35">(select all that apply)</span>
               </p>
               <div className="flex flex-wrap gap-2">
                 {CONDITIONS.map(c => (
@@ -230,13 +232,15 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
                 ))}
               </div>
             </div>
-            <button onClick={handleContextNext}
-              className="w-full py-4 bg-ryobi-yellow text-ryobi-black font-black ryobi-heading text-sm tracking-widest hover:bg-white transition-colors active:scale-[0.99]">
-              CONTINUE TO SURVEY →
-            </button>
-            <button onClick={handleContextNext} className="text-white/45 text-sm hover:text-white/70 transition-colors">
-              Skip — proceed without context
-            </button>
+            <div className="w-full space-y-2">
+              <button onClick={handleContextNext}
+                className="w-full py-4 bg-ryobi-yellow text-ryobi-black font-black ryobi-heading text-sm tracking-widest hover:bg-white transition-colors active:scale-[0.99]">
+                CONTINUE →
+              </button>
+              <button onClick={handleContextNext} className="w-full py-3 text-white/45 text-sm hover:text-white/70 transition-colors uppercase tracking-widest">
+                Skip this step
+              </button>
+            </div>
           </motion.div>
         )}
 
@@ -244,12 +248,16 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
         {step === 'survey' && (
           <motion.div key={`survey-${surveyIndex}`} initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}
             className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-6">
-            <div className="w-full max-w-sm bg-ryobi-dark border border-ryobi-muted p-6">
+            <div className="w-full max-w-sm">
               <SurveyStep question={SURVEY_QUESTIONS[surveyIndex]} onAnswer={handleSurveyAnswer} />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               {SURVEY_QUESTIONS.map((_, i) => (
-                <div key={i} className={`w-2 h-2 transition-all ${i < surveyIndex ? 'bg-ryobi-yellow' : i === surveyIndex ? 'bg-ryobi-yellow scale-125' : 'bg-ryobi-muted'}`} />
+                <div key={i} className={`transition-all rounded-none ${
+                  i < surveyIndex ? 'w-6 h-1.5 bg-ryobi-yellow' :
+                  i === surveyIndex ? 'w-6 h-1.5 bg-ryobi-yellow' :
+                  'w-3 h-1.5 bg-white/20'
+                }`} />
               ))}
             </div>
           </motion.div>

@@ -159,12 +159,12 @@ export default function VoiceCommentStep({ comment, onChange, onSubmit, onSkip, 
 
       <div className="space-y-2">
         <button onClick={onSubmit} disabled={submitting}
-          className="w-full py-4 bg-ryobi-yellow text-ryobi-black font-black ryobi-heading text-lg tracking-widest hover:bg-white transition-colors disabled:opacity-50 active:scale-[0.99]">
-          {submitting ? 'SUBMITTING...' : 'SUBMIT FEEDBACK'}
+          className="w-full py-4 bg-ryobi-yellow text-ryobi-black font-black ryobi-heading text-sm tracking-widest hover:bg-white transition-colors disabled:opacity-50 active:scale-[0.99]">
+          CONTINUE →
         </button>
         <button onClick={onSkip} disabled={submitting}
-          className="w-full py-3 text-white/60 text-sm uppercase tracking-widest hover:text-white transition-colors">
-          Skip and submit without comment
+          className="w-full py-3 text-white/50 text-sm uppercase tracking-widest hover:text-white/75 transition-colors">
+          Skip this step
         </button>
       </div>
 
