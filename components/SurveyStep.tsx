@@ -41,7 +41,7 @@ export default function SurveyStep({ question, onAnswer }: Props) {
       <div className="w-full">
         <p className="text-white font-semibold text-lg mb-1 leading-snug text-center">{question.text}</p>
         <p className="text-white/65 text-xs text-center mb-6 uppercase tracking-widest">
-          Tap to select — lower scores fill automatically
+          Tap to select
         </p>
 
         {/* NPS row: all 11 on one row */}

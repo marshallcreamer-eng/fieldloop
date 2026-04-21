@@ -1,7 +1,7 @@
 'use client'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -13,14 +13,15 @@ import { computeQuestionStats, computeNPS, npsMarginOfError, welchTTest, npsCate
 import RyobiHeader from '@/components/RyobiHeader'
 import DemoNav from '@/components/DemoNav'
 
-interface NPSEntry { score: number; comment: string | null; product_id: string; session_date: string }
+interface NPSEntry    { score: number; comment: string | null; product_id: string; session_date: string }
+interface SurveyRow  { question_key: string; score: number; product_id: string; session_date: string }
 
 interface Props {
-  initialFeedback: Feedback[]
-  products: Product[]
-  initialInsights: AIInsight[]
-  initialSurveyScores: Record<string, Record<string, number[]>>
-  npsData: NPSEntry[]
+  initialFeedback:  Feedback[]
+  products:         Product[]
+  initialInsights:  AIInsight[]
+  surveyRawData:    SurveyRow[]
+  npsData:          NPSEntry[]
 }
 
 const REACTION_COLORS: Record<string, string> = {
@@ -30,6 +31,8 @@ const REACTION_LABELS: Record<string, string> = {
   love: 'Highly Positive', like: 'Positive', meh: 'Neutral', dislike: 'Negative',
 }
 const MIN_N = 5
+
+type DateFilter = 'all' | 'today' | 'week' | '30days'
 
 function shortName(name: string): string {
   return name.replace(/RYOBI\s+/i,'').replace(/40V\s+/i,'').replace(/HP\s+/i,'').replace(/Brushless\s+/i,'').replace(/\(.*?\)/g,'').trim().split(' ').filter(Boolean).slice(0,3).join(' ')
@@ -69,11 +72,10 @@ function ReactionBadge({ reaction }: { reaction: string }) {
 
 const tooltipStyle = { background: '#111', border: '1px solid rgba(225,231,35,0.4)', color: '#fff', fontSize: 11, borderRadius: 0 }
 
-export default function LiveDashboard({ initialFeedback, products, initialInsights, initialSurveyScores, npsData }: Props) {
+export default function LiveDashboard({ initialFeedback, products, initialInsights, surveyRawData, npsData }: Props) {
   const [feedback, setFeedback]     = useState<Feedback[]>(initialFeedback)
   const [insights, setInsights]     = useState<AIInsight[]>(initialInsights)
-  const [surveyScores]              = useState(initialSurveyScores)
-  const [dateFilter, setDateFilter] = useState<'all'|'today'|'yesterday'|'week'>('week')
+  const [dateFilter, setDateFilter] = useState<DateFilter>('week')
   const [selectedProduct, setSelectedProduct] = useState<string>('all')
   const [loadingInsight, setLoadingInsight]   = useState<string|null>(null)
   const [flashCount, setFlashCount]           = useState(false)
@@ -91,15 +93,41 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
   }, [])
 
   const today     = new Date().toISOString().split('T')[0]
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
-  const weekAgo   = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]
+  const weekAgo   = new Date(Date.now() -  7 * 86400000).toISOString().split('T')[0]
+  const monthAgo  = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
 
-  const filtered = feedback.filter(f => {
-    const dateOk = dateFilter === 'all' ? true : dateFilter === 'today' ? f.session_date === today : dateFilter === 'yesterday' ? f.session_date === yesterday : f.session_date >= weekAgo
-    return dateOk && (selectedProduct === 'all' || f.product_id === selectedProduct)
-  })
+  function dateOk(date: string): boolean {
+    if (dateFilter === 'all')    return true
+    if (dateFilter === 'today')  return date === today
+    if (dateFilter === 'week')   return date >= weekAgo
+    if (dateFilter === '30days') return date >= monthAgo
+    return true
+  }
 
-  // Reaction distribution
+  // ── Feedback filter (reactions + live feed)
+  const filtered = feedback.filter(f =>
+    dateOk(f.session_date) && (selectedProduct === 'all' || f.product_id === selectedProduct)
+  )
+
+  // ── Survey rows filter (drives all stats)
+  const filteredSurvey = useMemo(() =>
+    surveyRawData.filter(r =>
+      dateOk(r.session_date) && (selectedProduct === 'all' || r.product_id === selectedProduct)
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [surveyRawData, dateFilter, selectedProduct]
+  )
+
+  // ── NPS verbatim filter
+  const filteredNps = useMemo(() =>
+    npsData.filter(e =>
+      dateOk(e.session_date) && (selectedProduct === 'all' || e.product_id === selectedProduct)
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [npsData, dateFilter, selectedProduct]
+  )
+
+  // ── Reaction distribution
   const reactionData = (['love','like','meh','dislike'] as const).map(r => ({
     name:  REACTION_LABELS[r],
     value: filtered.filter(f => f.reaction === r).length,
@@ -111,38 +139,30 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
   const productActivity = products.map(p => ({
     name:     shortName(p.name),
     fullName: p.name,
-    count:    feedback.filter(f => f.product_id === p.id).length,
+    count:    filtered.filter(f => f.product_id === p.id).length,
   }))
 
-  // Survey stats
-  const statsProductId = selectedProduct === 'all' ? null : selectedProduct
+  // ── Survey question stats (from filtered raw rows)
   const questionStats: QuestionStats[] = SURVEY_QUESTIONS.filter(q => q.scale !== 'nps').map(q => {
-    const scores = statsProductId
-      ? (surveyScores[statsProductId]?.[q.key] ?? [])
-      : Object.values(surveyScores).flatMap(ps => ps[q.key] ?? [])
+    const scores = filteredSurvey.filter(r => r.question_key === q.key).map(r => r.score)
     return computeQuestionStats(q.key, q.text, scores)
   }).filter(Boolean) as QuestionStats[]
 
-  // NPS
-  const allNpsScores = statsProductId
-    ? (surveyScores[statsProductId]?.['nps'] ?? [])
-    : Object.values(surveyScores).flatMap(ps => ps['nps'] ?? [])
+  // ── NPS (from filtered raw rows)
+  const allNpsScores = filteredSurvey.filter(r => r.question_key === 'nps').map(r => r.score)
   const npsScore = computeNPS(allNpsScores)
   const npsMoe   = npsMarginOfError(allNpsScores)
 
-  const filteredNps = npsData.filter(e =>
-    (selectedProduct === 'all' || e.product_id === selectedProduct) && e.product_id
-  )
   const promoters  = filteredNps.filter(e => npsCategory(e.score) === 'promoter')
   const passives   = filteredNps.filter(e => npsCategory(e.score) === 'passive')
   const detractors = filteredNps.filter(e => npsCategory(e.score) === 'detractor')
   const npsTotal   = filteredNps.length
 
-  // Significance tests
+  // ── Significance tests (all-time per product for max power)
   const sigTests = sigTestA && sigTestB && sigTestA !== sigTestB
     ? SURVEY_QUESTIONS.filter(q => q.scale !== 'nps').map(q => {
-        const sA = surveyScores[sigTestA]?.[q.key] ?? []
-        const sB = surveyScores[sigTestB]?.[q.key] ?? []
+        const sA = surveyRawData.filter(r => r.product_id === sigTestA && r.question_key === q.key).map(r => r.score)
+        const sB = surveyRawData.filter(r => r.product_id === sigTestB && r.question_key === q.key).map(r => r.score)
         return welchTTest(q.key, sigTestA, sA, sigTestB, sB)
       }).filter(Boolean) : []
 
@@ -156,13 +176,20 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
     setLoadingInsight(null)
   }
 
+  const DATE_LABELS: Record<DateFilter, string> = {
+    all:    'All Time',
+    today:  'Today',
+    week:   'Last 7 Days',
+    '30days': 'Last 30 Days',
+  }
+
   return (
     <div className="min-h-screen bg-ryobi-black">
       <RyobiHeader
         subtitle="Research Dashboard"
         right={
           <div className="flex items-center gap-5">
-            <a href="/admin/seed" className="text-white/50 text-xs uppercase tracking-widest hover:text-ryobi-yellow transition-colors">Seed Data</a>
+            <a href="/" className="text-white/50 text-xs uppercase tracking-widest hover:text-ryobi-yellow transition-colors">Seed Data</a>
             <div className="flex items-center gap-2">
               <span className="text-white/50 text-xs uppercase tracking-wider">Live</span>
               <span className="w-2 h-2 bg-ryobi-yellow animate-pulse" />
@@ -179,12 +206,12 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
           <div>
             <div className="text-white/55 text-[10px] uppercase tracking-widest mb-1.5">Date Range</div>
             <div className="flex border border-white/15 overflow-hidden">
-              {(['all','today','yesterday','week'] as const).map(d => (
+              {(['all','today','week','30days'] as const).map(d => (
                 <button key={d} onClick={() => setDateFilter(d)}
                   className={`px-3 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${
                     dateFilter === d ? 'bg-ryobi-yellow text-ryobi-black' : 'bg-ryobi-dark text-white/60 hover:text-white hover:bg-white/10'
                   }`}>
-                  {d === 'all' ? 'All Time' : d === 'week' ? 'Last 7 Days' : d.charAt(0).toUpperCase() + d.slice(1)}
+                  {DATE_LABELS[d]}
                 </button>
               ))}
             </div>
@@ -222,27 +249,31 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
           <div className="bg-ryobi-dark border border-white/10 p-5">
             <SectionHeader
               title="Reaction Distribution"
-              subtitle="Breakdown of how testers rated products across all four response types for the selected window."
+              subtitle="Breakdown of tester ratings across all four response types for the selected window."
             />
-            <ResponsiveContainer width="100%" height={190}>
-              <BarChart data={reactionData} layout="vertical" margin={{ left: 10, right: 40 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10, fill: '#ffffff60' }} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#ffffff80' }} width={95} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v} responses`, '']} />
-                <Bar dataKey="value" radius={0}>
-                  {reactionData.map(entry => <Cell key={entry.key} fill={entry.fill} />)}
-                  <LabelList dataKey="pct" position="right" formatter={(v: any) => `${v}%`} style={{ fill: '#ffffff80', fontSize: 10 }} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {reactionData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={190}>
+                <BarChart data={reactionData} layout="vertical" margin={{ left: 10, right: 40 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: '#ffffff60' }} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#ffffff80' }} width={95} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v} responses`, '']} />
+                  <Bar dataKey="value" radius={0}>
+                    {reactionData.map(entry => <Cell key={entry.key} fill={entry.fill} />)}
+                    <LabelList dataKey="pct" position="right" formatter={(v: any) => `${v}%`} style={{ fill: '#ffffff80', fontSize: 10 }} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-white/40 text-sm text-center py-16 uppercase tracking-widest">No data for this filter</p>
+            )}
           </div>
 
           {/* Submissions per product */}
           <div className="bg-ryobi-dark border border-white/10 p-5">
             <SectionHeader
               title="Submissions per Product"
-              subtitle="Total tester sessions logged per product across all time — independent of the date filter above."
+              subtitle="Tester sessions logged per product for the selected date and product filter."
             />
             <ResponsiveContainer width="100%" height={190}>
               <BarChart data={productActivity} margin={{ left: -10, top: 16 }}>
@@ -266,14 +297,14 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
           <div className="bg-ryobi-dark border border-white/10 p-5">
             <SectionHeader
               title="Survey Score Averages"
-              subtitle="Testers answered 4 statements on a 1–7 scale after each product session. Top 2 Box = % scoring 6 or 7 (strongly favorable). Bottom 2 Box = % scoring 1 or 2."
+              subtitle="Testers answered 4 statements on a 1–7 scale after each session. Top 2 Box = % scoring 6–7. Bottom 2 Box = % scoring 1–2."
             />
             <div className="space-y-6">
               {questionStats.map(stat => {
-                const scores  = statsProductId ? (surveyScores[statsProductId]?.[stat.question_key] ?? []) : Object.values(surveyScores).flatMap(ps => ps[stat.question_key] ?? [])
-                const t2b     = topTwoBox(scores)
-                const b2b     = bottomTwoBox(scores)
-                const lowN    = stat.n < MIN_N
+                const scores = filteredSurvey.filter(r => r.question_key === stat.question_key).map(r => r.score)
+                const t2b = topTwoBox(scores)
+                const b2b = bottomTwoBox(scores)
+                const lowN = stat.n < MIN_N
                 return (
                   <div key={stat.question_key} className={lowN ? 'opacity-50' : ''}>
                     <div className="flex items-start justify-between mb-2 gap-4 flex-wrap">
@@ -282,7 +313,6 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
                         <span className="text-white/50 text-xs">1 = strongly disagree · 7 = strongly agree · n={stat.n}</span>
                         {lowN && <span className="text-amber-400 text-xs ml-2">⚠ Low sample — directional only</span>}
                       </div>
-                      {/* Top/Bottom 2 Box callouts */}
                       <div className="flex gap-2 flex-shrink-0">
                         <div className="text-center px-3 py-1.5 border border-ryobi-yellow/30 bg-ryobi-yellow/10">
                           <div className="ryobi-heading text-lg text-ryobi-yellow leading-none">{t2b}%</div>
@@ -299,7 +329,6 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
                       </div>
                     </div>
 
-                    {/* Score bar with CI */}
                     <div className="relative h-2 bg-white/10 w-full">
                       <div className="absolute inset-y-0 bg-ryobi-yellow/30"
                         style={{ left: `${(stat.ci_lower / 7) * 100}%`, width: `${((stat.ci_upper - stat.ci_lower) / 7) * 100}%` }} />
@@ -325,12 +354,11 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
               subtitle={`NPS = % Promoters − % Detractors. Scale: −100 to +100. Above 0 is positive. Current score: ${npsScore > 0 ? '+' : ''}${npsScore} (±${npsMoe} MoE, n=${npsTotal})`}
             />
 
-            {/* Band summary bar */}
             <div className="grid grid-cols-3 gap-3 mb-6">
               {[
-                { label: 'Promoters', sub: 'Scored 9–10', data: promoters, color: 'border-ryobi-yellow/40 bg-ryobi-yellow/10', textColor: 'text-ryobi-yellow', formula: '% drives score up' },
-                { label: 'Passives',  sub: 'Scored 7–8',  data: passives,  color: 'border-white/20 bg-white/5',              textColor: 'text-white/70',      formula: 'Neutral — not counted' },
-                { label: 'Detractors',sub: 'Scored 0–6',  data: detractors,color: 'border-red-500/30 bg-red-500/10',          textColor: 'text-red-400',       formula: '% drives score down' },
+                { label: 'Promoters',  sub: 'Scored 9–10', data: promoters,  color: 'border-ryobi-yellow/40 bg-ryobi-yellow/10', textColor: 'text-ryobi-yellow', formula: '% drives score up' },
+                { label: 'Passives',   sub: 'Scored 7–8',  data: passives,   color: 'border-white/20 bg-white/5',               textColor: 'text-white/70',     formula: 'Neutral — not counted' },
+                { label: 'Detractors', sub: 'Scored 0–6',  data: detractors, color: 'border-red-500/30 bg-red-500/10',           textColor: 'text-red-400',      formula: '% drives score down' },
               ].map(band => (
                 <div key={band.label} className={`border ${band.color} p-4`}>
                   <div className={`ryobi-heading text-2xl ${band.textColor} leading-none`}>
@@ -343,7 +371,6 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
               ))}
             </div>
 
-            {/* Visual score bar */}
             {npsTotal > 0 && (
               <div className="mb-6">
                 <div className="flex h-2 rounded-none overflow-hidden gap-0.5">
@@ -359,16 +386,15 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
               </div>
             )}
 
-            {/* Verbatim quotes per band */}
             <div className="grid md:grid-cols-3 gap-4">
               {[
-                { label: 'Promoter Verbatims', data: promoters, borderColor: 'border-ryobi-yellow/30', textColor: 'text-ryobi-yellow/80', prompt: '"What did you love most?"' },
-                { label: 'Passive Verbatims',  data: passives,  borderColor: 'border-white/15',        textColor: 'text-white/60',         prompt: '"What would move you higher?"' },
-                { label: 'Detractor Verbatims',data: detractors,borderColor: 'border-red-500/25',      textColor: 'text-red-400/80',        prompt: '"What was disappointing?"' },
+                { label: 'Promoter Verbatims', data: promoters,  borderColor: 'border-ryobi-yellow/30', textColor: 'text-ryobi-yellow/80', prompt: '"What did you love most?"' },
+                { label: 'Passive Verbatims',  data: passives,   borderColor: 'border-white/15',        textColor: 'text-white/60',         prompt: '"What would move you higher?"' },
+                { label: 'Detractor Verbatims',data: detractors, borderColor: 'border-red-500/25',      textColor: 'text-red-400/80',        prompt: '"What was disappointing?"' },
               ].map(band => (
                 <div key={band.label}>
                   <div className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${band.textColor}`}>{band.label}</div>
-                  <div className={`text-white/30 text-[9px] italic mb-2`}>{band.prompt}</div>
+                  <div className="text-white/30 text-[9px] italic mb-2">{band.prompt}</div>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {band.data.filter(e => e.comment).slice(0, 8).map((e, i) => (
                       <div key={i} className={`border-l-2 ${band.borderColor} pl-2 py-0.5`}>
@@ -377,7 +403,7 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
                       </div>
                     ))}
                     {band.data.filter(e => e.comment).length === 0 && (
-                      <p className="text-white/30 text-xs italic">No comments submitted yet for this band.</p>
+                      <p className="text-white/30 text-xs italic">No comments for this band in the selected window.</p>
                     )}
                   </div>
                 </div>
@@ -391,7 +417,7 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
           <div className="bg-ryobi-dark border border-white/10 p-5">
             <SectionHeader
               title="Statistical Significance — Product Comparison"
-              subtitle="Welch's t-test checks whether the score gap between two products is real or random noise. p < 0.05 means statistically significant. Select two products to compare."
+              subtitle="Welch's t-test checks whether the score gap between two products is real or random noise. p < 0.05 = statistically significant. Uses all-time data for maximum statistical power."
             />
             <div className="flex gap-3 mb-5 flex-wrap items-center">
               {[{ state: sigTestA, setter: setSigTestA, label: 'Product A' }, { state: sigTestB, setter: setSigTestB, label: 'Product B' }].map(({ state, setter, label }) => (
@@ -407,8 +433,8 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
             </div>
             <div className="space-y-1">
               {(sigTests as NonNullable<typeof sigTests[0]>[]).map(test => {
-                const nA = surveyScores[sigTestA]?.[test.question_key]?.length ?? 0
-                const nB = surveyScores[sigTestB]?.[test.question_key]?.length ?? 0
+                const nA = surveyRawData.filter(r => r.product_id === sigTestA && r.question_key === test.question_key).length
+                const nB = surveyRawData.filter(r => r.product_id === sigTestB && r.question_key === test.question_key).length
                 const lowN = nA < MIN_N || nB < MIN_N
                 return (
                   <div key={test.question_key}
@@ -476,7 +502,7 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
         <div className="bg-ryobi-dark border border-white/10 p-5">
           <SectionHeader
             title="Live Feedback Feed"
-            subtitle="Every tester submission appears here in real time — no refresh needed. Updates instantly."
+            subtitle="Every tester submission appears here in real time — no refresh needed."
           />
           <div className="space-y-1 max-h-96 overflow-y-auto">
             {filtered.slice(0, 60).map(f => {
