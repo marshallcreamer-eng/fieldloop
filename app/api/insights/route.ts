@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabase } from '@/lib/supabase'
+import { createSupabaseAdmin } from '@/lib/supabase'
 import Anthropic from '@anthropic-ai/sdk'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
-  const supabase = createSupabase()
+  const supabase = createSupabaseAdmin()
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const { product_id } = await req.json()
 

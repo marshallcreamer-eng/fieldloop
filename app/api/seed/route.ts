@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabase } from '@/lib/supabase'
+import { createSupabaseAdmin } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
@@ -101,7 +101,7 @@ function nps(mean: number) {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createSupabase()
+  const supabase = createSupabaseAdmin()
   const { numTesters = 5, numDays = 7, numProducts = 3, clearFirst = false } = await req.json()
 
   const clampedTesters  = Math.min(Math.max(numTesters, 1), TESTER_POOL.length)
