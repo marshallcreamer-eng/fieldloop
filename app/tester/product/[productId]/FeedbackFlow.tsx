@@ -135,7 +135,7 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
             className="flex-1 flex flex-col items-center justify-center px-5 py-8 gap-5">
             <div className="text-center">
               <h2 className="ryobi-heading text-2xl text-white tracking-widest mb-1">What influenced your rating most?</h2>
-              <p className="text-white/35 text-xs uppercase tracking-widest">Select the primary factor</p>
+              <p className="text-white/65 text-xs uppercase tracking-widest">Select the primary factor</p>
             </div>
             <div className="grid grid-cols-2 gap-2.5 w-full max-w-sm">
               {CATEGORIES.map(c => {
@@ -146,7 +146,7 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
                     <Icon size={18} className="text-ryobi-yellow/70 group-hover:text-ryobi-yellow transition-colors" />
                     <div>
                       <div className="ryobi-heading text-sm text-white tracking-wide">{c.label}</div>
-                      <div className="text-white/35 text-[10px] mt-0.5 leading-snug">{c.sub}</div>
+                      <div className="text-white/60 text-[10px] mt-0.5 leading-snug">{c.sub}</div>
                     </div>
                   </button>
                 )

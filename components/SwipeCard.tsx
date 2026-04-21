@@ -94,7 +94,7 @@ export default function SwipeCard({ product, onSwipe }: Props) {
       </motion.div>
 
       {/* Direction hints below card */}
-      <div className="absolute -bottom-8 left-0 right-0 flex justify-between text-xs text-white/25 px-2 uppercase tracking-widest font-semibold">
+      <div className="absolute -bottom-8 left-0 right-0 flex justify-between text-xs text-white/60 px-2 uppercase tracking-widest font-semibold">
         <span>← Pass</span>
         <span>↑ Good</span>
         <span>Love →</span>

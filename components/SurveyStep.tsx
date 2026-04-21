@@ -40,7 +40,7 @@ export default function SurveyStep({ question, onAnswer }: Props) {
     return (
       <div className="w-full">
         <p className="text-white font-semibold text-lg mb-1 leading-snug text-center">{question.text}</p>
-        <p className="text-white/35 text-xs text-center mb-6 uppercase tracking-widest">
+        <p className="text-white/65 text-xs text-center mb-6 uppercase tracking-widest">
           Tap to select — lower scores fill automatically
         </p>
 
@@ -65,7 +65,7 @@ export default function SurveyStep({ question, onAnswer }: Props) {
         </div>
 
         {/* Anchor labels */}
-        <div className="flex justify-between text-[10px] text-white/30 px-0.5 mb-5 uppercase tracking-widest">
+        <div className="flex justify-between text-[10px] text-white/60 px-0.5 mb-5 uppercase tracking-widest">
           <span>{question.anchor_low}</span>
           <span>{question.anchor_high}</span>
         </div>
@@ -105,7 +105,7 @@ export default function SurveyStep({ question, onAnswer }: Props) {
   return (
     <div className="w-full">
       <p className="text-white font-semibold text-lg mb-1 leading-snug text-center">{question.text}</p>
-      <p className="text-white/35 text-xs text-center mb-6 uppercase tracking-widest">
+      <p className="text-white/65 text-xs text-center mb-6 uppercase tracking-widest">
         {question.anchor_low} → {question.anchor_high}
       </p>
 
@@ -133,7 +133,7 @@ export default function SurveyStep({ question, onAnswer }: Props) {
         })}
       </div>
 
-      <div className="flex justify-between text-[10px] text-white/25 mt-3 px-0.5 uppercase tracking-widest">
+      <div className="flex justify-between text-[10px] text-white/60 mt-3 px-0.5 uppercase tracking-widest">
         <span>{question.anchor_low}</span>
         <span>{question.anchor_high}</span>
       </div>

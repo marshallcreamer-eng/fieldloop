@@ -10,20 +10,18 @@ export default function Home() {
         }} />
 
       {/* Top bar */}
-      <div className="relative z-10 flex items-center justify-between px-5 py-4 border-b border-white/5">
+      <div className="relative z-10 flex items-center justify-between px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-3">
           <div className="bg-ryobi-yellow px-2.5 py-1">
             <span className="ryobi-heading text-ryobi-black font-black text-sm tracking-widest">RYOBI</span>
           </div>
-          <div className="hidden sm:block">
-            <span className="text-white/20 text-[10px] uppercase tracking-[0.25em]">A TTI Inc. Brand</span>
-          </div>
+          <span className="text-white/60 text-[11px] uppercase tracking-[0.25em] hidden sm:block">A TTI Inc. Brand</span>
         </div>
         <div className="flex items-center gap-4">
-          <a href="/admin/seed" className="text-white/20 text-xs uppercase tracking-widest hover:text-white/50 transition-colors hidden sm:block">
+          <a href="/admin/seed" className="text-white/50 text-xs uppercase tracking-widest hover:text-ryobi-yellow transition-colors hidden sm:block">
             Admin
           </a>
-          <div className="text-white/20 text-[10px] uppercase tracking-[0.2em]">Advanced Engineering</div>
+          <span className="text-white/55 text-[11px] uppercase tracking-[0.2em]">Advanced Engineering</span>
         </div>
       </div>
 
@@ -32,14 +30,14 @@ export default function Home() {
 
         {/* Brand lockup */}
         <div className="flex items-center gap-2 mb-6">
-          <div className="w-px h-4 bg-ryobi-yellow/40" />
+          <div className="w-px h-4 bg-ryobi-yellow/50" />
           <span className="text-ryobi-yellow text-[11px] uppercase tracking-[0.4em] font-semibold">Beta Research Platform</span>
-          <div className="w-px h-4 bg-ryobi-yellow/40" />
+          <div className="w-px h-4 bg-ryobi-yellow/50" />
         </div>
 
         {/* Logo */}
         <div className="mb-2">
-          <div className="text-white/20 text-xs uppercase tracking-[0.5em] mb-1">RYOBI® ONE+™</div>
+          <div className="text-white/55 text-xs uppercase tracking-[0.5em] mb-1">RYOBI® ONE+™</div>
           <h1 className="ryobi-heading font-black tracking-widest text-white"
             style={{ fontSize: 'clamp(3rem, 14vw, 7.5rem)', lineHeight: 1 }}>
             FIELD<span className="text-ryobi-yellow">LOOP</span>
@@ -48,7 +46,7 @@ export default function Home() {
 
         <div className="w-12 h-px bg-ryobi-yellow mx-auto my-5" />
 
-        <p className="text-white/35 text-sm max-w-xs sm:max-w-md leading-relaxed mb-10">
+        <p className="text-white/75 text-sm max-w-xs sm:max-w-md leading-relaxed mb-10">
           Collect real-time product feedback from field testers. Swipe to rate, answer validated survey questions, and surface AI-synthesised research insights.
         </p>
 
@@ -62,7 +60,7 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="ryobi-heading text-xl text-ryobi-black tracking-widest mb-1.5">FIELD TESTER</div>
-              <p className="text-ryobi-black/55 text-xs leading-relaxed mb-5">
+              <p className="text-ryobi-black/70 text-xs leading-relaxed mb-5">
                 Rate your assigned products, complete the survey, and leave voice or text notes.
               </p>
               <div className="flex items-center gap-2 text-ryobi-black ryobi-heading text-xs tracking-widest">
@@ -72,14 +70,14 @@ export default function Home() {
             </div>
           </a>
 
-          <a href="/dashboard" className="group relative overflow-hidden bg-ryobi-dark border border-white/10 p-7 text-left transition-all hover:-translate-y-1 hover:border-ryobi-yellow hover:shadow-[0_20px_60px_rgba(225,231,35,0.1)] active:scale-[0.99]">
+          <a href="/dashboard" className="group relative overflow-hidden bg-ryobi-dark border border-white/15 p-7 text-left transition-all hover:-translate-y-1 hover:border-ryobi-yellow hover:shadow-[0_20px_60px_rgba(225,231,35,0.1)] active:scale-[0.99]">
             <div className="absolute top-0 right-0 w-20 h-20 bg-ryobi-yellow/5 translate-x-6 -translate-y-6 rotate-12" />
             <div className="relative">
               <svg className="w-7 h-7 mb-4 text-ryobi-yellow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
               <div className="ryobi-heading text-xl text-white tracking-widest mb-1.5">DASHBOARD</div>
-              <p className="text-white/35 text-xs leading-relaxed mb-5">
+              <p className="text-white/70 text-xs leading-relaxed mb-5">
                 Live feedback data, AI research synthesis, statistical analysis and significance testing.
               </p>
               <div className="flex items-center gap-2 text-ryobi-yellow ryobi-heading text-xs tracking-widest">
@@ -92,10 +90,10 @@ export default function Home() {
         </div>
 
         {/* TTI brand strip */}
-        <div className="mt-10 flex items-center gap-4 text-white/15">
-          <div className="w-8 h-px bg-white/10" />
-          <span className="text-[10px] uppercase tracking-[0.35em]">TTI Advanced Engineering · Anderson, SC</span>
-          <div className="w-8 h-px bg-white/10" />
+        <div className="mt-10 flex items-center gap-4">
+          <div className="w-8 h-px bg-white/20" />
+          <span className="text-white/50 text-[10px] uppercase tracking-[0.35em]">TTI Advanced Engineering · Anderson, SC</span>
+          <div className="w-8 h-px bg-white/20" />
         </div>
 
         {/* Brand values */}
@@ -107,7 +105,7 @@ export default function Home() {
           ].map(v => (
             <div key={v.label} className="flex flex-col gap-1">
               <div className="text-ryobi-yellow text-[10px] font-bold uppercase tracking-wider">{v.label}</div>
-              <div className="text-white/20 text-[9px] leading-snug">{v.sub}</div>
+              <div className="text-white/55 text-[9px] leading-snug">{v.sub}</div>
             </div>
           ))}
         </div>
@@ -115,14 +113,14 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <div className="relative z-10 border-t border-white/5 px-5 py-4">
+      <div className="relative z-10 border-t border-white/10 px-5 py-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 max-w-lg mx-auto">
-          <span className="text-white/15 text-[10px] uppercase tracking-[0.3em]">Powered by Claude AI · Anthropic</span>
+          <span className="text-white/45 text-[10px] uppercase tracking-[0.3em]">Powered by Claude AI · Anthropic</span>
           <div className="flex items-center gap-5">
-            <a href="mailto:research@fieldloop.demo" className="text-white/20 text-[10px] uppercase tracking-widest hover:text-ryobi-yellow transition-colors">
+            <a href="mailto:research@fieldloop.demo" className="text-white/55 text-[10px] uppercase tracking-widest hover:text-ryobi-yellow transition-colors">
               Contact Us
             </a>
-            <a href="mailto:support@fieldloop.demo?subject=Technical%20Difficulty" className="text-white/20 text-[10px] uppercase tracking-widest hover:text-white/50 transition-colors">
+            <a href="mailto:support@fieldloop.demo?subject=Technical%20Difficulty" className="text-white/55 text-[10px] uppercase tracking-widest hover:text-white transition-colors">
               Technical Difficulties?
             </a>
           </div>

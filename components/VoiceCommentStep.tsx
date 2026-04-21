@@ -86,7 +86,7 @@ export default function VoiceCommentStep({ comment, onChange, onSubmit, onSkip, 
 
       <div className="text-center">
         <h2 className="ryobi-heading text-2xl text-white tracking-widest mb-1">Anything to add?</h2>
-        <p className="text-white/40 text-xs">Optional — type or hold the mic to speak</p>
+        <p className="text-white/65 text-xs">Optional — type or hold the mic to speak</p>
       </div>
 
       {/* Textarea */}
@@ -121,7 +121,7 @@ export default function VoiceCommentStep({ comment, onChange, onSubmit, onSkip, 
               <path d="M19 10a1 1 0 0 0-2 0 5 5 0 0 1-10 0 1 1 0 0 0-2 0 7 7 0 0 0 6 6.92V19H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2h-2v-2.08A7 7 0 0 0 19 10z"/>
             </svg>
           </button>
-          <span className="text-xs text-white/30 uppercase tracking-widest">
+          <span className="text-xs text-white/65 uppercase tracking-widest">
             {listening ? '● Recording — release to stop' : 'Hold to speak'}
           </span>
           {error && <span className="text-xs text-red-400">{error}</span>}
@@ -135,7 +135,7 @@ export default function VoiceCommentStep({ comment, onChange, onSubmit, onSkip, 
           {submitting ? 'SUBMITTING...' : 'SUBMIT FEEDBACK'}
         </button>
         <button onClick={onSkip} disabled={submitting}
-          className="w-full py-3 text-white/30 text-xs uppercase tracking-widest hover:text-white/60 transition-colors">
+          className="w-full py-3 text-white/55 text-xs uppercase tracking-widest hover:text-white transition-colors">
           Skip and submit without comment
         </button>
       </div>
