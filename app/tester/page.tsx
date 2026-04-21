@@ -49,9 +49,6 @@ export default async function TesterHome() {
           <span className="text-white/30 text-xs uppercase tracking-[0.2em]">Field Testing</span>
         </div>
         <div className="flex items-center gap-5">
-          <a href="/dashboard" className="text-white/25 text-xs uppercase tracking-widest hover:text-ryobi-yellow transition-colors">
-            Dashboard →
-          </a>
           <div className="text-right">
             <div className="text-ryobi-yellow text-[10px] font-bold uppercase tracking-wider">{tester?.region}</div>
             <div className="text-white text-xs font-semibold">{tester?.name}</div>
@@ -80,6 +77,19 @@ export default async function TesterHome() {
             <span className="text-white/40 text-xs font-mono tabular-nums">
               {doneCount}/{totalCount} today
             </span>
+          </div>
+        </div>
+
+        {/* Testing notice */}
+        <div className="mb-6 border border-ryobi-yellow/20 bg-ryobi-yellow/5 px-4 py-3 flex gap-3 items-start">
+          <svg className="w-4 h-4 text-ryobi-yellow flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <div className="text-ryobi-yellow text-xs font-bold uppercase tracking-widest mb-0.5">Beta Testing Only</div>
+            <p className="text-white/40 text-xs leading-relaxed">
+              This app is for authorised field testers only. Research data and analytics are available to the engineering team via a separate backend portal.
+            </p>
           </div>
         </div>
 

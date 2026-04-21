@@ -104,9 +104,6 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
             <div className="text-ryobi-gray text-xs uppercase tracking-widest">{stepLabels[step]}</div>
             <div className="text-white text-xs font-semibold truncate">{product.name}</div>
           </div>
-          <a href="/dashboard" className="text-ryobi-gray text-xs uppercase tracking-widest hover:text-ryobi-yellow transition-colors font-semibold hidden sm:block">
-            Dashboard
-          </a>
         </div>
 
         {/* Progress bar */}
@@ -203,10 +200,6 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
               <a href="/tester"
                 className="py-3 px-6 bg-ryobi-yellow text-ryobi-black font-black ryobi-heading text-sm uppercase tracking-widest hover:bg-white transition-colors text-center">
                 Rate Another Product →
-              </a>
-              <a href="/dashboard"
-                className="py-3 px-6 bg-ryobi-dark border border-ryobi-muted text-ryobi-gray font-semibold text-xs uppercase tracking-widest hover:border-ryobi-yellow hover:text-white transition-colors text-center">
-                View Research Dashboard
               </a>
             </div>
           </motion.div>
