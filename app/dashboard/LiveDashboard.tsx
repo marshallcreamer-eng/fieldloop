@@ -112,9 +112,17 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
       <RyobiHeader
         subtitle="Advanced Engineering — Research Dashboard"
         right={
-          <div className="flex items-center gap-2">
-            <span className="text-ryobi-gray text-xs uppercase tracking-wider">Live</span>
-            <span className="w-2 h-2 rounded-full bg-ryobi-yellow animate-pulse" />
+          <div className="flex items-center gap-4">
+            <a href="/analytics" className="text-ryobi-gray text-xs uppercase tracking-widest font-semibold hover:text-ryobi-yellow transition-colors">
+              Analytics
+            </a>
+            <a href="/admin/seed" className="text-ryobi-gray text-xs uppercase tracking-widest font-semibold hover:text-ryobi-yellow transition-colors">
+              Seed Data
+            </a>
+            <div className="flex items-center gap-2">
+              <span className="text-ryobi-gray text-xs uppercase tracking-wider">Live</span>
+              <span className="w-2 h-2 rounded-full bg-ryobi-yellow animate-pulse" />
+            </div>
           </div>
         }
       />
