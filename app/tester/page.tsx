@@ -30,9 +30,14 @@ export default async function TesterHome() {
       <RyobiHeader
         subtitle="Field Testing"
         right={
-          <div className="text-right">
-            <div className="text-ryobi-yellow text-xs font-bold uppercase tracking-wider">{tester?.region}</div>
-            <div className="text-white text-sm font-semibold">{tester?.name}</div>
+          <div className="flex items-center gap-4">
+            <a href="/dashboard" className="text-ryobi-gray text-xs uppercase tracking-widest font-semibold hover:text-ryobi-yellow transition-colors">
+              Research Dashboard →
+            </a>
+            <div className="text-right">
+              <div className="text-ryobi-yellow text-xs font-bold uppercase tracking-wider">{tester?.region}</div>
+              <div className="text-white text-sm font-semibold">{tester?.name}</div>
+            </div>
           </div>
         }
       />

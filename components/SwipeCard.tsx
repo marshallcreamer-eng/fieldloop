@@ -65,7 +65,7 @@ export default function SwipeCard({ product, onSwipe }: Props) {
             </motion.div>
             <motion.div style={{ opacity: mehOpacity }}
               className="absolute inset-0 bg-white/10 flex items-center justify-center">
-              <span className="text-white text-5xl font-black ryobi-heading drop-shadow-lg">MEH</span>
+              <span className="text-white text-5xl font-black ryobi-heading drop-shadow-lg">OK</span>
             </motion.div>
 
             {/* ONE+ badge */}
