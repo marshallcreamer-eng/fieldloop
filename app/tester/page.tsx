@@ -55,7 +55,7 @@ export default async function TesterHome() {
           <span className="text-white/60 text-xs uppercase tracking-[0.2em]">Field Testing</span>
         </div>
         <div className="text-right">
-          <div className="text-ryobi-yellow text-[10px] font-bold uppercase tracking-wider">{tester?.region}</div>
+          <div className="text-ryobi-yellow text-xs font-bold uppercase tracking-wider">{tester?.region}</div>
           <div className="text-white text-xs font-semibold">{tester?.name}</div>
         </div>
       </div>
@@ -138,17 +138,17 @@ export default async function TesterHome() {
                 {/* Info */}
                 <div className="px-4 py-4 flex-1 flex flex-col justify-between min-h-[80px]">
                   <div>
-                    <div className="text-white/55 text-[10px] font-semibold uppercase tracking-widest">{product.category}</div>
+                    <div className="text-white/55 text-xs font-semibold uppercase tracking-widest">{product.category}</div>
                     <div className="ryobi-heading text-sm text-white mt-0.5 leading-snug line-clamp-2">{product.name}</div>
                     <div className="text-white/60 text-xs mt-1 line-clamp-1">{product.description}</div>
                   </div>
                   <div className="mt-2">
                     {done ? (
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-green-400">
+                      <span className="text-xs font-bold uppercase tracking-widest text-green-400">
                         ✓ Submitted today
                       </span>
                     ) : (
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-ryobi-yellow">
+                      <span className="text-xs font-bold uppercase tracking-widest text-ryobi-yellow">
                         Rate now →
                       </span>
                     )}
@@ -169,7 +169,7 @@ export default async function TesterHome() {
           </div>
         )}
 
-        <p className="text-center text-white/45 text-[10px] uppercase tracking-[0.3em] mt-10">
+        <p className="text-center text-white/45 text-xs uppercase tracking-[0.3em] mt-10">
           Your feedback drives the next generation of RYOBI tools.
         </p>
       </div>

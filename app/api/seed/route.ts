@@ -199,16 +199,28 @@ export async function POST(req: NextRequest) {
   const { data: feedbackRows, error: fErr } = await supabase.from('feedback').insert(feedbackToInsert).select()
   if (fErr) return NextResponse.json({ error: fErr.message }, { status: 500 })
 
-  // Survey responses — correlated with reaction
+  // Task type weights: drilling/fastening most common, framing next, etc.
+  const TASK_WEIGHTS = [0.12, 0.10, 0.22, 0.18, 0.14, 0.12, 0.08, 0.04]
+  const TASK_VALUES  = [1, 2, 3, 4, 5, 6, 7, 8]
+  const COND_KEYS    = ['cond_dusty','cond_hot','cond_cold','cond_wet','cond_indoor','cond_tight']
+  const COND_PROBS   = [0.40, 0.30, 0.15, 0.20, 0.35, 0.25]
+
+  // Survey responses — correlated with reaction + field context
   const surveyToInsert = feedbackRows!.flatMap(fb => {
     const base = fb.reaction === 'love' ? 6.1 : fb.reaction === 'like' ? 5.0 : fb.reaction === 'meh' ? 3.4 : 2.1
-    return [
+    const taskType = weighted(TASK_VALUES as unknown as readonly number[], TASK_WEIGHTS)
+    const rows = [
       { feedback_id: fb.id, question_key: 'overall_satisfaction',    score: likert(base) },
       { feedback_id: fb.id, question_key: 'ease_of_use',             score: likert(base + 0.3) },
       { feedback_id: fb.id, question_key: 'performance_expectation', score: likert(base - 0.2) },
       { feedback_id: fb.id, question_key: 'build_quality',           score: likert(base + 0.4) },
       { feedback_id: fb.id, question_key: 'nps',                     score: nps(base * 1.5) },
+      { feedback_id: fb.id, question_key: 'task_type',               score: taskType },
     ]
+    COND_KEYS.forEach((key, i) => {
+      if (Math.random() < COND_PROBS[i]) rows.push({ feedback_id: fb.id, question_key: key, score: 1 })
+    })
+    return rows
   })
 
   const { error: sErr } = await supabase.from('survey_responses').insert(surveyToInsert)

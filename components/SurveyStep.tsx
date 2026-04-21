@@ -65,7 +65,7 @@ export default function SurveyStep({ question, onAnswer }: Props) {
         </div>
 
         {/* Anchor labels */}
-        <div className="flex justify-between text-[10px] text-white/60 px-0.5 mb-5 uppercase tracking-widest">
+        <div className="flex justify-between text-xs text-white/65 px-0.5 mb-5 uppercase tracking-widest">
           <span>{question.anchor_low}</span>
           <span>{question.anchor_high}</span>
         </div>
@@ -133,7 +133,7 @@ export default function SurveyStep({ question, onAnswer }: Props) {
         })}
       </div>
 
-      <div className="flex justify-between text-[10px] text-white/60 mt-3 px-0.5 uppercase tracking-widest">
+      <div className="flex justify-between text-xs text-white/65 mt-3 px-0.5 uppercase tracking-widest">
         <span>{question.anchor_low}</span>
         <span>{question.anchor_high}</span>
       </div>

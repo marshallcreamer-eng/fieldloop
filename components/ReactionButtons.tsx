@@ -24,7 +24,7 @@ export default function ReactionButtons({ onReact }: Props) {
         >
           <span className="text-xl font-black leading-none">{r.icon}</span>
           <span className="ryobi-heading text-xs tracking-widest">{r.label}</span>
-          <span className="text-[9px] opacity-60 leading-none">{r.sub}</span>
+          <span className="text-xs opacity-65 leading-none">{r.sub}</span>
         </button>
       ))}
     </div>

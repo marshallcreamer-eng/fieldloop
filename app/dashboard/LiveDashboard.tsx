@@ -10,6 +10,7 @@ import {
 import type { Feedback, Product, AIInsight, QuestionStats } from '@/lib/types'
 import { SURVEY_QUESTIONS } from '@/lib/types'
 import { computeQuestionStats, computeNPS, npsMarginOfError, welchTTest, npsCategory } from '@/lib/stats'
+import { TASK_TYPES, CONDITIONS } from '@/lib/fieldContext'
 import RyobiHeader from '@/components/RyobiHeader'
 import DemoNav from '@/components/DemoNav'
 
@@ -51,7 +52,7 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle: string })
   return (
     <div className="mb-5">
       <h3 className="ryobi-heading text-base text-white border-l-4 border-ryobi-yellow pl-3 tracking-widest">{title}</h3>
-      <p className="text-white/55 text-xs mt-1 pl-4 leading-relaxed">{subtitle}</p>
+      <p className="text-white/65 text-sm mt-1 pl-4 leading-relaxed">{subtitle}</p>
     </div>
   )
 }
@@ -64,7 +65,7 @@ function ReactionBadge({ reaction }: { reaction: string }) {
     dislike: 'bg-red-500/20 text-red-400 border border-red-500/40',
   }
   return (
-    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 ${styles[reaction] ?? styles.meh}`}>
+    <span className={`text-xs font-bold uppercase tracking-widest px-2 py-0.5 ${styles[reaction] ?? styles.meh}`}>
       {REACTION_LABELS[reaction] ?? reaction}
     </span>
   )
@@ -204,7 +205,7 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
         {/* ── Filters ── */}
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <div className="text-white/55 text-[10px] uppercase tracking-widest mb-1.5">Date Range</div>
+            <div className="text-white/65 text-xs uppercase tracking-widest mb-1.5">Date Range</div>
             <div className="flex border border-white/15 overflow-hidden">
               {(['all','today','week','30days'] as const).map(d => (
                 <button key={d} onClick={() => setDateFilter(d)}
@@ -217,7 +218,7 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
             </div>
           </div>
           <div>
-            <div className="text-white/55 text-[10px] uppercase tracking-widest mb-1.5">Product</div>
+            <div className="text-white/65 text-xs uppercase tracking-widest mb-1.5">Product</div>
             <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)}
               className="text-xs border border-white/15 px-3 py-2 bg-ryobi-dark text-white font-semibold uppercase tracking-wide focus:outline-none focus:border-ryobi-yellow h-[38px]">
               <option value="all">All Products</option>
@@ -235,9 +236,9 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
             { label: 'Top 2 Box Rate', value: `${posRate}%`, sub: 'Highly Positive + Positive responses', color: posRate >= 60 ? 'text-ryobi-yellow' : 'text-red-400' },
           ].map(k => (
             <div key={k.label} className="bg-ryobi-dark border border-white/10 border-l-4 border-l-ryobi-yellow p-4">
-              <div className="text-white/55 text-[10px] uppercase tracking-widest mb-1">{k.label}</div>
+              <div className="text-white/65 text-xs uppercase tracking-widest mb-1">{k.label}</div>
               <div className={`ryobi-heading text-3xl transition-colors ${k.color}`}>{k.value}</div>
-              <div className="text-white/45 text-xs mt-0.5 leading-snug">{k.sub}</div>
+              <div className="text-white/60 text-sm mt-0.5 leading-snug">{k.sub}</div>
             </div>
           ))}
         </div>
@@ -292,6 +293,78 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
           </div>
         </div>
 
+        {/* ── Field Context ── */}
+        {(() => {
+          const taskRows = filteredSurvey.filter(r => r.question_key === 'task_type')
+          const condRows = filteredSurvey.filter(r => r.question_key.startsWith('cond_'))
+          if (taskRows.length === 0 && condRows.length === 0) return null
+
+          const taskCounts = TASK_TYPES.map(t => ({
+            name:  t.label,
+            count: taskRows.filter(r => r.score === t.value).length,
+          })).filter(t => t.count > 0).sort((a, b) => b.count - a.count)
+
+          const condCounts = CONDITIONS.map(c => ({
+            key:   c.key,
+            label: c.label,
+            count: condRows.filter(r => r.question_key === c.key).length,
+            pct:   taskRows.length ? Math.round(condRows.filter(r => r.question_key === c.key).length / taskRows.length * 100) : 0,
+          })).filter(c => c.count > 0).sort((a, b) => b.count - a.count)
+
+          return (
+            <div className="bg-ryobi-dark border border-white/10 p-5">
+              <SectionHeader
+                title="Field Context"
+                subtitle="What testers were doing and the conditions they worked in. Context makes every other data point more meaningful."
+              />
+              <div className="grid md:grid-cols-2 gap-6">
+
+                {/* Task type breakdown */}
+                {taskCounts.length > 0 && (
+                  <div>
+                    <div className="text-white/65 text-xs uppercase tracking-widest mb-3">Task Type</div>
+                    <div className="space-y-2">
+                      {taskCounts.map(t => {
+                        const pct = taskRows.length ? Math.round(t.count / taskRows.length * 100) : 0
+                        return (
+                          <div key={t.name}>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="text-white/80">{t.name}</span>
+                              <span className="text-white/55">{t.count} <span className="text-white/35">({pct}%)</span></span>
+                            </div>
+                            <div className="h-2 bg-white/10 w-full">
+                              <div className="h-full bg-ryobi-yellow/70" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="text-white/40 text-xs mt-3">n={taskRows.length} sessions with task context</div>
+                  </div>
+                )}
+
+                {/* Conditions */}
+                {condCounts.length > 0 && (
+                  <div>
+                    <div className="text-white/65 text-xs uppercase tracking-widest mb-3">Working Conditions</div>
+                    <div className="flex flex-wrap gap-2">
+                      {condCounts.map(c => (
+                        <div key={c.key} className="flex flex-col items-center border border-white/15 bg-white/5 px-4 py-3 min-w-[90px]">
+                          <div className="ryobi-heading text-2xl text-ryobi-yellow leading-none">{c.pct}%</div>
+                          <div className="text-white/70 text-sm mt-1 text-center">{c.label}</div>
+                          <div className="text-white/40 text-xs mt-0.5">n={c.count}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-white/45 text-xs mt-3">% of sessions where testers reported this condition</p>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          )
+        })()}
+
         {/* ── Survey Score Averages + Distribution ── */}
         {questionStats.length > 0 && (
           <div className="bg-ryobi-dark border border-white/10 p-5">
@@ -337,11 +410,11 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
                       <div className="flex gap-2 flex-shrink-0">
                         <div className="text-center px-3 py-1.5 border border-ryobi-yellow/30 bg-ryobi-yellow/10">
                           <div className="ryobi-heading text-lg text-ryobi-yellow leading-none">{t2b}%</div>
-                          <div className="text-ryobi-yellow/70 text-[9px] uppercase tracking-wider mt-0.5">Top 2 Box</div>
+                          <div className="text-ryobi-yellow/80 text-xs uppercase tracking-wider mt-0.5">Top 2 Box</div>
                         </div>
                         <div className="text-center px-3 py-1.5 border border-red-500/30 bg-red-500/10">
                           <div className="ryobi-heading text-lg text-red-400 leading-none">{b2b}%</div>
-                          <div className="text-red-400/70 text-[9px] uppercase tracking-wider mt-0.5">Bot 2 Box</div>
+                          <div className="text-red-400/80 text-xs uppercase tracking-wider mt-0.5">Bot 2 Box</div>
                         </div>
                       </div>
                     </div>
@@ -397,8 +470,8 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
                     {npsTotal ? Math.round(band.data.length / npsTotal * 100) : 0}%
                   </div>
                   <div className={`text-xs font-bold uppercase tracking-widest mt-1 ${band.textColor}`}>{band.label}</div>
-                  <div className="text-white/45 text-[10px] mt-0.5">{band.sub} · n={band.data.length}</div>
-                  <div className="text-white/30 text-[9px] mt-1 italic">{band.formula}</div>
+                  <div className="text-white/60 text-xs mt-0.5">{band.sub} · n={band.data.length}</div>
+                  <div className="text-white/45 text-xs mt-1 italic">{band.formula}</div>
                 </div>
               ))}
             </div>
@@ -425,17 +498,17 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
                 { label: 'Promoter Verbatims', data: promoters,  borderColor: 'border-ryobi-yellow/30', textColor: 'text-ryobi-yellow/80', prompt: '"What did you love most?"' },
               ].map(band => (
                 <div key={band.label}>
-                  <div className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${band.textColor}`}>{band.label}</div>
-                  <div className="text-white/30 text-[9px] italic mb-2">{band.prompt}</div>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className={`text-xs font-bold uppercase tracking-widest mb-2 ${band.textColor}`}>{band.label}</div>
+                  <div className="text-white/50 text-xs italic mb-3">{band.prompt}</div>
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
                     {band.data.filter(e => e.comment).slice(0, 8).map((e, i) => (
-                      <div key={i} className={`border-l-2 ${band.borderColor} pl-2 py-0.5`}>
-                        <p className="text-white/70 text-xs leading-snug">&ldquo;{e.comment}&rdquo;</p>
-                        <span className="text-white/30 text-[9px]">Score {e.score}</span>
+                      <div key={i} className={`border-l-2 ${band.borderColor} pl-3 py-0.5`}>
+                        <p className="text-white/80 text-sm leading-relaxed">&ldquo;{e.comment}&rdquo;</p>
+                        <span className="text-white/45 text-xs">Score {e.score}</span>
                       </div>
                     ))}
                     {band.data.filter(e => e.comment).length === 0 && (
-                      <p className="text-white/30 text-xs italic">No comments for this band in the selected window.</p>
+                      <p className="text-white/40 text-sm italic">No comments for this band in the selected window.</p>
                     )}
                   </div>
                 </div>
@@ -454,7 +527,7 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
             <div className="flex gap-3 mb-5 flex-wrap items-center">
               {[{ state: sigTestA, setter: setSigTestA, label: 'Product A' }, { state: sigTestB, setter: setSigTestB, label: 'Product B' }].map(({ state, setter, label }) => (
                 <div key={label}>
-                  <div className="text-white/55 text-[10px] uppercase tracking-widest mb-1">{label}</div>
+                  <div className="text-white/65 text-xs uppercase tracking-widest mb-1">{label}</div>
                   <select value={state} onChange={e => setter(e.target.value)}
                     className="text-xs border border-white/15 px-3 py-2 bg-ryobi-dark text-white font-semibold focus:outline-none focus:border-ryobi-yellow">
                     {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -473,13 +546,13 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
                     className={`flex items-center justify-between p-3 border-l-4 ${test.significant ? 'border-ryobi-yellow bg-ryobi-yellow/5' : 'border-transparent bg-white/5'} ${lowN ? 'opacity-50' : ''}`}>
                     <div>
                       <span className="text-white text-xs font-semibold block">{SURVEY_QUESTIONS.find(q => q.key === test.question_key)?.text}</span>
-                      <span className="text-white/45 text-[10px]">n={nA} vs n={nB}</span>
+                      <span className="text-white/55 text-xs">n={nA} vs n={nB}</span>
                     </div>
                     <div className="ml-4 text-right flex-shrink-0">
                       <span className={`ryobi-heading text-xs block ${test.significant ? 'text-ryobi-yellow' : 'text-white/50'}`}>
                         {test.significant ? '★ Significant' : 'Not significant'}
                       </span>
-                      <span className="text-white/40 text-[10px]">t={test.t_statistic} · p={test.p_value}</span>
+                      <span className="text-white/50 text-xs">t={test.t_statistic} · p={test.p_value}</span>
                     </div>
                   </div>
                 )
@@ -502,19 +575,19 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
               return (
                 <div key={p.id} className="border border-white/10 p-4 bg-black/30">
                   <div className="ryobi-heading text-xs text-white mb-0.5 leading-snug">{p.name}</div>
-                  <div className="text-white/40 text-[10px] mb-3 uppercase tracking-widest">{p.sku}</div>
+                  <div className="text-white/55 text-xs mb-3 uppercase tracking-widest">{p.sku}</div>
                   {insight ? (
                     <>
-                      <div className="text-[10px] font-black text-ryobi-black bg-ryobi-yellow px-2 py-0.5 w-fit mb-3 uppercase tracking-wider">
+                      <div className="text-xs font-black text-ryobi-black bg-ryobi-yellow px-2 py-0.5 w-fit mb-3 uppercase tracking-wider">
                         {insight.top_theme}
                       </div>
-                      <div className="text-white/65 text-xs leading-relaxed whitespace-pre-line">{insight.summary}</div>
-                      <div className="text-[10px] text-white/40 mt-3 border-t border-white/10 pt-2 flex justify-between">
+                      <div className="text-white/75 text-sm leading-relaxed whitespace-pre-line">{insight.summary}</div>
+                      <div className="text-xs text-white/55 mt-3 border-t border-white/10 pt-2 flex justify-between">
                         <span>Sentiment</span>
                         <span className={`font-bold ${(insight.sentiment_score ?? 0) >= 6 ? 'text-ryobi-yellow' : 'text-amber-400'}`}>{insight.sentiment_score}/10</span>
                       </div>
                       <button onClick={() => generateInsight(p.id)} disabled={isLoading}
-                        className="text-[10px] text-white/40 mt-2 hover:text-white transition-colors disabled:opacity-50">
+                        className="text-xs text-white/45 mt-2 hover:text-white transition-colors disabled:opacity-50">
                         {isLoading ? 'Regenerating...' : '↻ Regenerate'}
                       </button>
                     </>
@@ -547,10 +620,10 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="ryobi-heading text-xs text-white">{shortName(product?.name ?? '')}</span>
-                      {f.category && <span className="text-[10px] text-white/45 uppercase tracking-wider border border-white/15 px-1.5 py-0.5">{f.category}</span>}
-                      <span className="text-[10px] text-white/35 ml-auto">{f.session_date}</span>
+                      {f.category && <span className="text-xs text-white/55 uppercase tracking-wider border border-white/15 px-1.5 py-0.5">{f.category}</span>}
+                      <span className="text-xs text-white/45 ml-auto">{f.session_date}</span>
                     </div>
-                    {f.comment && <p className="text-xs text-white/55 mt-0.5 line-clamp-1">&ldquo;{f.comment}&rdquo;</p>}
+                    {f.comment && <p className="text-sm text-white/65 mt-0.5 line-clamp-1">&ldquo;{f.comment}&rdquo;</p>}
                   </div>
                 </div>
               )
@@ -560,7 +633,7 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
             )}
           </div>
           {filtered.length > 60 && (
-            <p className="text-white/35 text-[10px] text-center mt-2 uppercase tracking-widest">Showing 60 of {filtered.length} — use the product filter to narrow</p>
+            <p className="text-white/50 text-xs text-center mt-2 uppercase tracking-widest">Showing 60 of {filtered.length} — use the product filter to narrow</p>
           )}
         </div>
 
