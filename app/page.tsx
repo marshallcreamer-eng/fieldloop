@@ -1,3 +1,5 @@
+import SeedButton from '@/components/SeedButton'
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-ryobi-black flex flex-col overflow-hidden relative">
@@ -88,6 +90,8 @@ export default function Home() {
           </a>
 
         </div>
+
+        <SeedButton />
 
         {/* TTI brand strip */}
         <div className="mt-10 flex items-center gap-4">
