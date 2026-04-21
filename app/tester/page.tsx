@@ -1,7 +1,6 @@
 import { createSupabase } from '@/lib/supabase'
 import Image from 'next/image'
 import Link from 'next/link'
-import RyobiHeader from '@/components/RyobiHeader'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,34 +23,67 @@ export default async function TesterHome() {
     .eq('session_date', today)
 
   const submittedToday = new Set((todayFeedback || []).map(f => f.product_id))
+  const doneCount = assignments?.filter(a => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = a.product as any
+    return submittedToday.has(p.id)
+  }).length ?? 0
+  const totalCount = assignments?.length ?? 0
 
   return (
-    <div className="min-h-screen bg-ryobi-offwhite">
-      <RyobiHeader
-        subtitle="Field Testing"
-        right={
-          <div className="flex items-center gap-4">
-            <a href="/dashboard" className="text-ryobi-gray text-xs uppercase tracking-widest font-semibold hover:text-ryobi-yellow transition-colors">
-              Research Dashboard →
-            </a>
-            <div className="text-right">
-              <div className="text-ryobi-yellow text-xs font-bold uppercase tracking-wider">{tester?.region}</div>
-              <div className="text-white text-sm font-semibold">{tester?.name}</div>
-            </div>
-          </div>
-        }
-      />
+    <div className="min-h-screen bg-ryobi-black flex flex-col">
 
-      <div className="max-w-lg mx-auto px-4 py-6">
-        <div className="mb-6">
-          <h1 className="ryobi-heading text-2xl text-ryobi-dark">
-            Hi, {tester?.name?.split(' ')[0]}
+      {/* Subtle grid background */}
+      <div className="fixed inset-0 pointer-events-none"
+        style={{
+          backgroundImage: 'linear-gradient(rgba(225,231,35,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(225,231,35,0.03) 1px, transparent 1px)',
+          backgroundSize: '60px 60px',
+        }} />
+
+      {/* Header */}
+      <div className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/5">
+        <div className="flex items-center gap-3">
+          <div className="bg-ryobi-yellow px-2.5 py-1">
+            <span className="ryobi-heading text-ryobi-black font-black text-sm tracking-widest">RYOBI</span>
+          </div>
+          <span className="text-white/30 text-xs uppercase tracking-[0.2em]">Field Testing</span>
+        </div>
+        <div className="flex items-center gap-5">
+          <a href="/dashboard" className="text-white/25 text-xs uppercase tracking-widest hover:text-ryobi-yellow transition-colors">
+            Dashboard →
+          </a>
+          <div className="text-right">
+            <div className="text-ryobi-yellow text-[10px] font-bold uppercase tracking-wider">{tester?.region}</div>
+            <div className="text-white text-xs font-semibold">{tester?.name}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 flex-1 max-w-lg mx-auto w-full px-4 py-8">
+
+        {/* Greeting + progress */}
+        <div className="mb-8">
+          <div className="text-ryobi-yellow text-xs uppercase tracking-[0.3em] font-semibold mb-1">Today&apos;s Session</div>
+          <h1 className="ryobi-heading text-3xl text-white tracking-widest mb-4">
+            Hi, {tester?.name?.split(' ')[0] ?? 'Tester'}
           </h1>
-          <p className="text-ryobi-gray text-sm mt-1">
-            {assignments?.length ?? 0} products assigned for testing
-          </p>
+
+          {/* Progress bar */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-1 bg-white/10">
+              <div
+                className="h-full bg-ryobi-yellow transition-all duration-500"
+                style={{ width: totalCount > 0 ? `${(doneCount / totalCount) * 100}%` : '0%' }}
+              />
+            </div>
+            <span className="text-white/40 text-xs font-mono tabular-nums">
+              {doneCount}/{totalCount} today
+            </span>
+          </div>
         </div>
 
+        {/* Product cards */}
         <div className="flex flex-col gap-3">
           {assignments?.map(a => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,29 +94,44 @@ export default async function TesterHome() {
               <Link
                 key={a.id}
                 href={`/tester/product/${product.id}`}
-                className="bg-white rounded-none border border-gray-200 overflow-hidden flex items-stretch hover:border-ryobi-yellow hover:shadow-md transition-all active:scale-[0.99] group"
+                className={`relative flex items-stretch overflow-hidden transition-all duration-150 active:scale-[0.99] group
+                  ${done
+                    ? 'bg-white/5 border border-white/10 opacity-60'
+                    : 'bg-ryobi-dark border border-white/10 hover:border-ryobi-yellow hover:shadow-[0_8px_30px_rgba(225,231,35,0.08)]'
+                  }`}
               >
-                <div className="relative w-24 flex-shrink-0 bg-ryobi-dark">
-                  {product.image_url && (
-                    <Image src={product.image_url} alt={product.name} fill className="object-cover opacity-90 group-hover:opacity-100 transition-opacity" unoptimized />
+                {/* Image */}
+                <div className="relative w-20 flex-shrink-0 bg-black/40">
+                  {product.image_url ? (
+                    <Image
+                      src={product.image_url}
+                      alt={product.name}
+                      fill
+                      className="object-cover opacity-70 group-hover:opacity-90 transition-opacity"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-3xl">🔧</div>
                   )}
                 </div>
-                {/* Yellow accent bar */}
-                <div className="w-1 bg-ryobi-yellow flex-shrink-0" />
-                <div className="p-4 flex-1 flex flex-col justify-between">
+
+                {/* Yellow left accent */}
+                <div className={`w-0.5 flex-shrink-0 transition-colors ${done ? 'bg-white/20' : 'bg-ryobi-yellow/40 group-hover:bg-ryobi-yellow'}`} />
+
+                {/* Info */}
+                <div className="px-4 py-4 flex-1 flex flex-col justify-between min-h-[80px]">
                   <div>
-                    <div className="text-ryobi-gray text-xs font-semibold uppercase tracking-wider">{product.category}</div>
-                    <div className="ryobi-heading text-base text-ryobi-dark mt-0.5">{product.name}</div>
-                    <div className="text-ryobi-gray text-xs mt-1 line-clamp-1">{product.description}</div>
+                    <div className="text-white/30 text-[10px] font-semibold uppercase tracking-widest">{product.category}</div>
+                    <div className="ryobi-heading text-sm text-white mt-0.5 leading-snug line-clamp-2">{product.name}</div>
                   </div>
                   <div className="mt-2">
                     {done ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-green-700 bg-green-100 px-2 py-1">
-                        ✓ Submitted today
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-green-400">
+                        ✓ Submitted
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-ryobi-black bg-ryobi-yellow px-2 py-1">
-                        Feedback needed →
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-ryobi-yellow">
+                        Rate now →
                       </span>
                     )}
                   </div>
@@ -94,7 +141,15 @@ export default async function TesterHome() {
           })}
         </div>
 
-        <p className="text-center text-xs text-ryobi-gray mt-8 uppercase tracking-wider">
+        {totalCount === 0 && (
+          <div className="text-center py-16">
+            <div className="text-white/20 text-4xl mb-4">🔧</div>
+            <p className="text-white/30 text-sm uppercase tracking-widest">No products assigned yet</p>
+            <p className="text-white/20 text-xs mt-2">Ask your team to run a seed from /admin/seed</p>
+          </div>
+        )}
+
+        <p className="text-center text-white/15 text-[10px] uppercase tracking-[0.3em] mt-10">
           Your feedback drives the next generation of RYOBI tools.
         </p>
       </div>

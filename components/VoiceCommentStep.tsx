@@ -10,7 +10,6 @@ interface Props {
   submitting: boolean
 }
 
-// Web Speech API types
 declare global {
   interface Window {
     SpeechRecognition: new () => SpeechRecognitionInstance
@@ -39,11 +38,10 @@ interface SpeechRecognitionErrorEvent extends Event {
 }
 
 export default function VoiceCommentStep({ comment, onChange, onSubmit, onSkip, submitting }: Props) {
-  const [listening, setListening] = useState(false)
-  const [supported, setSupported] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
-  const interimRef = useRef('')
+  const [listening, setListening]   = useState(false)
+  const [supported, setSupported]   = useState(false)
+  const [error, setError]           = useState<string | null>(null)
+  const recognitionRef              = useRef<SpeechRecognitionInstance | null>(null)
 
   useEffect(() => {
     const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)
@@ -53,48 +51,27 @@ export default function VoiceCommentStep({ comment, onChange, onSubmit, onSkip, 
   function startListening() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SR) return
-
     setError(null)
     const recognition = new SR()
     recognitionRef.current = recognition
     recognition.continuous = true
     recognition.interimResults = true
     recognition.lang = 'en-US'
-
-    const baseText = comment
+    const base = comment
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let interim = ''
       let final = ''
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript
-        if (event.results[i].isFinal) {
-          final += transcript + ' '
-        } else {
-          interim += transcript
-        }
+        if (event.results[i].isFinal) final += event.results[i][0].transcript + ' '
       }
-      interimRef.current = interim
-      // Append finalized speech to whatever was already typed
-      if (final) {
-        onChange((baseText + ' ' + final).trim() + ' ')
-      }
+      if (final) onChange((base + ' ' + final).trim() + ' ')
     }
-
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (event.error === 'not-allowed') {
-        setError('Microphone access denied. Please allow access in your browser.')
-      } else if (event.error !== 'aborted') {
-        setError('Voice input error. Try again.')
-      }
+      if (event.error === 'not-allowed') setError('Microphone access denied.')
+      else if (event.error !== 'aborted') setError('Voice input error.')
       setListening(false)
     }
-
-    recognition.onend = () => {
-      setListening(false)
-      interimRef.current = ''
-    }
-
+    recognition.onend = () => setListening(false)
     recognition.start()
     setListening(true)
   }
@@ -105,70 +82,64 @@ export default function VoiceCommentStep({ comment, onChange, onSubmit, onSkip, 
   }
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 gap-5 w-full">
-      <h2 className="text-xl font-bold text-gray-800 text-center">Anything else to add?</h2>
-      <p className="text-gray-500 text-sm text-center">
-        Type below, or tap the mic to speak your comment.
-      </p>
+    <div className="flex-1 flex flex-col w-full max-w-sm mx-auto px-6 py-8 gap-5">
 
-      <div className="w-full max-w-sm relative">
+      <div className="text-center">
+        <h2 className="ryobi-heading text-2xl text-white tracking-widest mb-1">Anything to add?</h2>
+        <p className="text-white/40 text-xs">Optional — type or hold the mic to speak</p>
+      </div>
+
+      {/* Textarea */}
+      <div className="relative flex-1 min-h-0">
         <textarea
           value={comment}
           onChange={e => onChange(e.target.value)}
           placeholder="e.g. Grip gets slippery after 30 min in humid conditions..."
-          className="w-full h-32 p-4 pr-14 rounded-2xl border-2 border-gray-200 focus:border-orange-400 focus:outline-none resize-none text-sm text-gray-700 transition-colors"
+          className="w-full h-36 bg-ryobi-dark border-2 border-white/10 focus:border-ryobi-yellow text-white placeholder-white/20 p-4 text-sm resize-none focus:outline-none transition-colors"
         />
+        {listening && (
+          <div className="absolute inset-0 border-2 border-red-500 pointer-events-none animate-pulse" />
+        )}
+      </div>
 
-        {/* Mic button inside the textarea */}
-        {supported && (
+      {/* Voice button + status */}
+      {supported && (
+        <div className="flex flex-col items-center gap-2">
           <button
             type="button"
             onPointerDown={startListening}
             onPointerUp={stopListening}
             onPointerLeave={stopListening}
-            className={`absolute bottom-3 right-3 w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95
+            className={`w-16 h-16 flex items-center justify-center transition-all active:scale-95
               ${listening
-                ? 'bg-red-500 text-white shadow-lg shadow-red-200 animate-pulse'
-                : 'bg-gray-100 text-gray-500 hover:bg-orange-100 hover:text-orange-500'
+                ? 'bg-red-500 shadow-[0_0_30px_rgba(239,68,68,0.5)]'
+                : 'bg-ryobi-dark border-2 border-white/20 hover:border-ryobi-yellow'
               }`}
-            title="Hold to speak"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill={listening ? 'white' : '#77787B'}>
               <path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4z"/>
               <path d="M19 10a1 1 0 0 0-2 0 5 5 0 0 1-10 0 1 1 0 0 0-2 0 7 7 0 0 0 6 6.92V19H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2h-2v-2.08A7 7 0 0 0 19 10z"/>
             </svg>
           </button>
-        )}
-      </div>
-
-      {/* Status line */}
-      <div className="h-5 flex items-center justify-center">
-        {listening && (
-          <span className="flex items-center gap-1.5 text-xs text-red-500 font-semibold">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-            Listening... release to stop
+          <span className="text-xs text-white/30 uppercase tracking-widest">
+            {listening ? '● Recording — release to stop' : 'Hold to speak'}
           </span>
-        )}
-        {error && <span className="text-xs text-red-400">{error}</span>}
-        {!listening && !error && supported && (
-          <span className="text-xs text-gray-400">Hold mic button to speak</span>
-        )}
+          {error && <span className="text-xs text-red-400">{error}</span>}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="space-y-2">
+        <button onClick={onSubmit} disabled={submitting}
+          className="w-full py-4 bg-ryobi-yellow text-ryobi-black font-black ryobi-heading text-lg tracking-widest hover:bg-white transition-colors disabled:opacity-50 active:scale-[0.99]">
+          {submitting ? 'SUBMITTING...' : 'SUBMIT FEEDBACK'}
+        </button>
+        <button onClick={onSkip} disabled={submitting}
+          className="w-full py-3 text-white/30 text-xs uppercase tracking-widest hover:text-white/60 transition-colors">
+          Skip and submit without comment
+        </button>
       </div>
 
-      <button
-        onClick={onSubmit}
-        disabled={submitting}
-        className="w-full max-w-sm py-4 bg-orange-500 text-white font-bold text-lg rounded-2xl hover:bg-orange-600 active:scale-95 transition-all disabled:opacity-50"
-      >
-        {submitting ? 'Submitting...' : 'Submit Feedback'}
-      </button>
-      <button
-        onClick={onSkip}
-        disabled={submitting}
-        className="text-gray-400 text-sm underline"
-      >
-        Skip and submit
-      </button>
     </div>
   )
 }

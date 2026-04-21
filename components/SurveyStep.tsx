@@ -10,79 +10,73 @@ interface Props {
 
 export default function SurveyStep({ question, onAnswer }: Props) {
   const [selected, setSelected] = useState<number | null>(null)
-
   const isNPS = question.scale === 'nps'
-  const max = isNPS ? 10 : 7
+  const max   = isNPS ? 10 : 7
   const scores = Array.from({ length: max + (isNPS ? 1 : 0) }, (_, i) => i + (isNPS ? 0 : 1))
 
   function handleSelect(score: number) {
     setSelected(score)
-    setTimeout(() => onAnswer(score), 280)
+    setTimeout(() => onAnswer(score), 260)
+  }
+
+  // colour per position on scale
+  function getColor(score: number): 'red' | 'amber' | 'green' {
+    const pct = isNPS ? score / 10 : (score - 1) / 6
+    if (pct <= 0.28) return 'red'
+    if (pct <= 0.55) return 'amber'
+    return 'green'
+  }
+
+  const colorStyles = {
+    red:   { idle: 'border-red-500/30 text-red-400',   active: 'bg-red-500 border-red-500 text-white' },
+    amber: { idle: 'border-amber-400/30 text-amber-400', active: 'bg-amber-400 border-amber-400 text-black' },
+    green: { idle: 'border-ryobi-yellow/40 text-ryobi-yellow', active: 'bg-ryobi-yellow border-ryobi-yellow text-ryobi-black' },
   }
 
   return (
-    <div className="w-full max-w-sm mx-auto">
-      <p className="text-center text-gray-800 font-semibold text-lg mb-6 leading-snug px-2">
+    <div className="w-full">
+      <p className="text-white font-semibold text-lg mb-2 leading-snug text-center">
         {question.text}
+      </p>
+      <p className="text-white/40 text-xs text-center mb-6 uppercase tracking-widest">
+        {isNPS ? '0 = not at all · 10 = extremely likely' : '1 = strongly disagree · 7 = strongly agree'}
       </p>
 
       {isNPS ? (
-        <div>
+        <div className="space-y-2">
           <div className="grid grid-cols-6 gap-1.5">
-            {scores.slice(0, 6).map(s => (
-              <ScoreButton key={s} score={s} selected={selected} onSelect={handleSelect}
-                color={s <= 6 ? 'red' : s <= 8 ? 'yellow' : 'green'} />
-            ))}
+            {scores.slice(0, 6).map(s => <ScoreBtn key={s} score={s} selected={selected} onSelect={handleSelect} styles={colorStyles[getColor(s)]} />)}
           </div>
-          <div className="grid grid-cols-5 gap-1.5 mt-1.5">
-            {scores.slice(6).map(s => (
-              <ScoreButton key={s} score={s} selected={selected} onSelect={handleSelect}
-                color={s <= 6 ? 'red' : s <= 8 ? 'yellow' : 'green'} />
-            ))}
-          </div>
-          <div className="flex justify-between text-xs text-gray-400 mt-2 px-1">
-            <span>{question.anchor_low}</span>
-            <span>{question.anchor_high}</span>
+          <div className="grid grid-cols-5 gap-1.5">
+            {scores.slice(6).map(s => <ScoreBtn key={s} score={s} selected={selected} onSelect={handleSelect} styles={colorStyles[getColor(s)]} />)}
           </div>
         </div>
       ) : (
-        <div>
-          <div className="flex gap-2 justify-center">
-            {scores.map(s => (
-              <ScoreButton key={s} score={s} selected={selected} onSelect={handleSelect}
-                color={s <= 2 ? 'red' : s <= 4 ? 'yellow' : s <= 5 ? 'blue' : 'green'} />
-            ))}
-          </div>
-          <div className="flex justify-between text-xs text-gray-400 mt-2 px-1">
-            <span>{question.anchor_low}</span>
-            <span>{question.anchor_high}</span>
-          </div>
+        <div className="grid grid-cols-7 gap-1.5">
+          {scores.map(s => <ScoreBtn key={s} score={s} selected={selected} onSelect={handleSelect} styles={colorStyles[getColor(s)]} />)}
         </div>
       )}
+
+      <div className="flex justify-between text-xs text-white/30 mt-3 px-0.5">
+        <span>{question.anchor_low}</span>
+        <span>{question.anchor_high}</span>
+      </div>
     </div>
   )
 }
 
-function ScoreButton({
-  score, selected, onSelect, color
-}: {
+function ScoreBtn({ score, selected, onSelect, styles }: {
   score: number
   selected: number | null
   onSelect: (s: number) => void
-  color: 'red' | 'yellow' | 'blue' | 'green'
+  styles: { idle: string; active: string }
 }) {
-  const colorMap = {
-    red: 'bg-red-100 text-red-700 border-red-200 data-[active=true]:bg-red-500 data-[active=true]:text-white data-[active=true]:border-red-500',
-    yellow: 'bg-yellow-100 text-yellow-700 border-yellow-200 data-[active=true]:bg-yellow-500 data-[active=true]:text-white data-[active=true]:border-yellow-500',
-    blue: 'bg-blue-100 text-blue-700 border-blue-200 data-[active=true]:bg-blue-500 data-[active=true]:text-white data-[active=true]:border-blue-500',
-    green: 'bg-green-100 text-green-700 border-green-200 data-[active=true]:bg-green-500 data-[active=true]:text-white data-[active=true]:border-green-500',
-  }
-
+  const isActive = selected === score
   return (
     <button
-      data-active={selected === score}
       onClick={() => onSelect(score)}
-      className={`w-10 h-10 rounded-xl border-2 font-bold text-sm transition-all duration-150 active:scale-95 ${colorMap[color]}`}
+      className={`aspect-square w-full border-2 font-black text-sm transition-all duration-150 active:scale-90 flex items-center justify-center
+        ${isActive ? styles.active : `bg-ryobi-dark ${styles.idle} hover:border-opacity-60`}`}
     >
       {score}
     </button>
