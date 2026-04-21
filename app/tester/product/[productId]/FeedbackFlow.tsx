@@ -5,14 +5,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, Hand, Battery, ShieldCheck, Ruler, MessageSquare, type LucideIcon } from 'lucide-react'
 import DemoNav from '@/components/DemoNav'
 import SwipeCard from '@/components/SwipeCard'
-import ReactionButtons from '@/components/ReactionButtons'
+import ReactionButtons, { type ImpressionScore } from '@/components/ReactionButtons'
 import SurveyStep from '@/components/SurveyStep'
 import VoiceCommentStep from '@/components/VoiceCommentStep'
+import FFEStep from '@/components/FFEStep'
 import { SURVEY_QUESTIONS } from '@/lib/types'
 import { TASK_TYPES, CONDITIONS } from '@/lib/fieldContext'
 import type { Product, Reaction, FeedbackCategory } from '@/lib/types'
 
-type Step = 'swipe' | 'category' | 'context' | 'survey' | 'comment' | 'done'
+type Step = 'rate' | 'category' | 'context' | 'survey' | 'comment' | 'ffe' | 'done'
 
 interface Props {
   product: Product
@@ -30,19 +31,21 @@ const CATEGORIES: { value: FeedbackCategory; label: string; sub: string; Icon: L
 ]
 
 export default function FeedbackFlow({ product, assignmentId, testerId }: Props) {
-  const [step, setStep]                 = useState<Step>('swipe')
-  const [reaction, setReaction]         = useState<Reaction | null>(null)
-  const [category, setCategory]         = useState<FeedbackCategory | null>(null)
-  const [taskType, setTaskType]         = useState<number | null>(null)
-  const [activeConditions, setActiveConditions] = useState<Set<string>>(new Set())
-  const [surveyIndex, setSurveyIndex]   = useState(0)
-  const [surveyScores, setSurveyScores] = useState<Record<string, number>>({})
-  const [comment, setComment]           = useState('')
-  const [npsFollowUp, setNpsFollowUp]   = useState('')
-  const [submitting, setSubmitting]     = useState(false)
+  const [step, setStep]                           = useState<Step>('rate')
+  const [impression, setImpression]               = useState<ImpressionScore | null>(null)
+  const [reaction, setReaction]                   = useState<Reaction | null>(null)
+  const [category, setCategory]                   = useState<FeedbackCategory | null>(null)
+  const [taskType, setTaskType]                   = useState<number | null>(null)
+  const [activeConditions, setActiveConditions]   = useState<Set<string>>(new Set())
+  const [surveyIndex, setSurveyIndex]             = useState(0)
+  const [surveyScores, setSurveyScores]           = useState<Record<string, number>>({})
+  const [comment, setComment]                     = useState('')
+  const [npsFollowUp, setNpsFollowUp]             = useState('')
+  const [submitting, setSubmitting]               = useState(false)
 
-  function handleReaction(r: Reaction) {
-    setReaction(r)
+  function handleImpression(imp: ImpressionScore) {
+    setImpression(imp)
+    setReaction(imp.reaction)
     setStep('category')
   }
 
@@ -77,14 +80,22 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
     }
   }
 
-  async function handleSubmit() {
+  function handleCommentDone() {
+    setStep('ffe')
+  }
+
+  async function handleFFEComplete(ffeText: string | null) {
     if (!reaction || !category) return
     setSubmitting(true)
 
-    // Encode task type + conditions as survey scores
     const contextScores: Record<string, number> = {}
     if (taskType !== null) contextScores['task_type'] = taskType
+    if (impression !== null) contextScores['overall_impression'] = impression.score
     activeConditions.forEach(k => { contextScores[k] = 1 })
+
+    // Combine voice comment + FFE responses
+    const parts = [comment || npsFollowUp, ffeText].filter(Boolean)
+    const finalComment = parts.join('\n\n') || null
 
     await fetch('/api/feedback', {
       method: 'POST',
@@ -95,7 +106,7 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
         product_id: product.id,
         reaction,
         category,
-        comment: comment || npsFollowUp || null,
+        comment: finalComment,
         media_urls: [],
         session_date: new Date().toISOString().split('T')[0],
         survey_scores: { ...surveyScores, ...contextScores },
@@ -106,21 +117,24 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
   }
 
   const totalSurveySteps = SURVEY_QUESTIONS.length
+
   const stepLabels: Record<Step, string> = {
-    swipe:    'Rate this product',
-    category: 'What stood out?',
+    rate:     'How did it perform today?',
+    category: 'What stood out most?',
     context:  'Field context',
     survey:   `Survey ${surveyIndex + 1} of ${totalSurveySteps}`,
     comment:  'Add a comment',
+    ffe:      'Research questions',
     done:     'Done',
   }
 
   function progressPct(): number {
-    if (step === 'swipe')    return 15
-    if (step === 'category') return 30
-    if (step === 'context')  return 45
-    if (step === 'survey')   return 45 + ((surveyIndex + 1) / totalSurveySteps) * 35
-    if (step === 'comment')  return 88
+    if (step === 'rate')     return 12
+    if (step === 'category') return 25
+    if (step === 'context')  return 38
+    if (step === 'survey')   return 38 + ((surveyIndex + 1) / totalSurveySteps) * 30
+    if (step === 'comment')  return 74
+    if (step === 'ffe')      return 88
     return 100
   }
 
@@ -151,15 +165,12 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
 
       <AnimatePresence mode="wait">
 
-        {/* SWIPE */}
-        {step === 'swipe' && (
-          <motion.div key="swipe" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="flex-1 flex flex-col items-center justify-center gap-8 px-6 py-8">
-            <p className="text-white/65 text-sm text-center uppercase tracking-widest">Drag the card or tap a reaction</p>
-            <SwipeCard product={product} onSwipe={handleReaction} />
-            <div className="mt-10 w-full max-w-sm">
-              <ReactionButtons onReact={handleReaction} />
-            </div>
+        {/* RATE */}
+        {step === 'rate' && (
+          <motion.div key="rate" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+            className="flex-1 flex flex-col items-center justify-start gap-6 px-6 py-6 overflow-y-auto">
+            <SwipeCard product={product} />
+            <ReactionButtons onReact={handleImpression} selected={impression?.score} />
           </motion.div>
         )}
 
@@ -193,8 +204,6 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
         {step === 'context' && (
           <motion.div key="context" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
             className="flex-1 flex flex-col items-center justify-center px-5 py-8 gap-6 max-w-sm mx-auto w-full">
-
-            {/* Task type */}
             <div className="w-full">
               <h2 className="ryobi-heading text-xl text-white tracking-widest mb-1 text-center">What were you doing?</h2>
               <p className="text-white/60 text-sm text-center mb-4">Select the task you were working on</p>
@@ -211,10 +220,10 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
                 ))}
               </div>
             </div>
-
-            {/* Conditions */}
             <div className="w-full">
-              <p className="text-white/65 text-sm font-semibold uppercase tracking-widest mb-3">Conditions <span className="font-normal text-white/40">(select all that apply)</span></p>
+              <p className="text-white/65 text-sm font-semibold uppercase tracking-widest mb-3">
+                Conditions <span className="font-normal text-white/40">(select all that apply)</span>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {CONDITIONS.map(c => (
                   <button key={c.key} onClick={() => toggleCondition(c.key)}
@@ -228,7 +237,6 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
                 ))}
               </div>
             </div>
-
             <button onClick={handleContextNext}
               className="w-full py-4 bg-ryobi-yellow text-ryobi-black font-black ryobi-heading text-sm tracking-widest hover:bg-white transition-colors active:scale-[0.99]">
               CONTINUE TO SURVEY →
@@ -261,12 +269,25 @@ export default function FeedbackFlow({ product, assignmentId, testerId }: Props)
             <VoiceCommentStep
               comment={comment}
               onChange={setComment}
-              onSubmit={handleSubmit}
-              onSkip={handleSubmit}
-              submitting={submitting}
+              onSubmit={handleCommentDone}
+              onSkip={handleCommentDone}
+              submitting={false}
               reaction={reaction}
               category={category}
             />
+          </motion.div>
+        )}
+
+        {/* FFE */}
+        {step === 'ffe' && (
+          <motion.div key="ffe" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+            className="flex-1 flex flex-col items-center justify-center w-full">
+            <FFEStep onComplete={handleFFEComplete} />
+            {submitting && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <span className="text-ryobi-yellow ryobi-heading tracking-widest text-sm">SUBMITTING...</span>
+              </div>
+            )}
           </motion.div>
         )}
 
