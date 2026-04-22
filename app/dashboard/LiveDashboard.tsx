@@ -73,12 +73,39 @@ function ReactionBadge({ reaction }: { reaction: string }) {
 
 const tooltipStyle = { background: '#111', border: '1px solid rgba(225,231,35,0.4)', color: '#fff', fontSize: 11, borderRadius: 0 }
 
+const DEMO_INSIGHTS: Record<string, { top_theme: string; summary: string; sentiment_score: number }> = {
+  'RY401180': {
+    top_theme: 'Battery Runtime',
+    summary: 'Testers consistently praised the self-propelled drive system on inclines and uneven terrain. The 40V battery delivered 45–55 min runtime per charge across most sessions. Recurring feedback flagged the collection bag as undersized for larger lawns. Overall tester confidence is high — 9 of 11 would recommend to a neighbour.',
+    sentiment_score: 8.1,
+  },
+  'RY40250': {
+    top_theme: 'Ergonomics & Weight',
+    summary: 'The bump-feed head received strong marks for ease of use. Testers with longer sessions (45+ min) noted forearm fatigue, pointing to handle grip as an improvement area. Line breakage was mentioned in 3 of 14 sessions under heavy brush conditions. Sentiment remains positive — the cordless convenience outweighs the weight concern for most users.',
+    sentiment_score: 7.4,
+  },
+  'RY40550': {
+    top_theme: 'Cut Performance',
+    summary: 'Bar-and-chain performance was the standout strength — testers handling hardwood up to 12" diameter reported clean cuts with minimal kickback. Battery depletion under sustained load (continuous cutting > 20 min) flagged by 4 testers. Recommended: pair with second battery for extended fieldwork. NPS among experienced users: 72.',
+    sentiment_score: 8.6,
+  },
+  'RY40440': {
+    top_theme: 'Airflow & Noise',
+    summary: 'Testers rated airflow velocity as competitive with gas alternatives. Noise levels were a standout positive vs. prior gas models — 11 of 13 noted the quieter operation as a meaningful upgrade. Variable speed trigger received universal praise. Minor feedback: shoulder strap attachment point feels underdeveloped for prolonged use.',
+    sentiment_score: 8.3,
+  },
+  'OP40750': {
+    top_theme: 'Charge Retention',
+    summary: 'The 7.5Ah pack was tested across all 4 tool SKUs. Charge retention after 48h storage averaged 94%, exceeding tester expectations. Cold-weather performance (tested at 42°F) showed a 12% runtime reduction — within acceptable range. Testers flagged the indicator LED as hard to read in direct sunlight. Overall the battery is viewed as a platform strength.',
+    sentiment_score: 7.9,
+  },
+}
+
 export default function LiveDashboard({ initialFeedback, products, initialInsights, surveyRawData, npsData }: Props) {
   const [feedback, setFeedback]     = useState<Feedback[]>(initialFeedback)
-  const [insights, setInsights]     = useState<AIInsight[]>(initialInsights)
+  const [insights]                  = useState<AIInsight[]>(initialInsights)
   const [dateFilter, setDateFilter] = useState<DateFilter>('week')
   const [selectedProduct, setSelectedProduct] = useState<string>('all')
-  const [loadingInsight, setLoadingInsight]   = useState<string|null>(null)
   const [flashCount, setFlashCount]           = useState(false)
   const [sigTestA, setSigTestA] = useState(products[0]?.id ?? '')
   const [sigTestB, setSigTestB] = useState(products[1]?.id ?? '')
@@ -169,18 +196,6 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
 
   const posRate = filtered.length ? Math.round(filtered.filter(f => f.reaction === 'love' || f.reaction === 'like').length / filtered.length * 100) : 0
 
-  async function generateInsight(productId: string) {
-    setLoadingInsight(productId)
-    try {
-      const res  = await fetch('/api/insights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: productId }) })
-      const data = await res.json()
-      if (res.ok && data.summary) setInsights(prev => [data, ...prev.filter(i => i.product_id !== productId)])
-    } catch {
-      // silently fail — button will re-enable
-    } finally {
-      setLoadingInsight(null)
-    }
-  }
 
   const DATE_LABELS: Record<DateFilter, string> = {
     all:    'All Time',
@@ -195,7 +210,6 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
         subtitle="Research Dashboard"
         right={
           <div className="flex items-center gap-5">
-            <a href="/" className="text-white/50 text-xs uppercase tracking-widest hover:text-ryobi-yellow transition-colors">Seed Data</a>
             <div className="flex items-center gap-2">
               <span className="text-white/50 text-xs uppercase tracking-wider">Live</span>
               <span className="w-2 h-2 bg-ryobi-yellow animate-pulse" />
@@ -204,6 +218,13 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
         }
       />
       <DemoNav />
+
+      {/* Demo notice */}
+      <div className="bg-ryobi-yellow/10 border-b border-ryobi-yellow/30 px-4 py-2 flex items-center justify-center gap-3">
+        <span className="text-ryobi-yellow text-[10px] font-black uppercase tracking-widest">Demo Environment</span>
+        <span className="text-white/50 text-[10px] uppercase tracking-wider">· All data is simulated for demonstration purposes only ·</span>
+        <span className="text-ryobi-yellow text-[10px] font-black uppercase tracking-widest">Demo Environment</span>
+      </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
 
@@ -575,8 +596,10 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
           />
           <div className="grid md:grid-cols-3 gap-3">
             {products.map(p => {
-              const insight   = insights.find(i => i.product_id === p.id)
-              const isLoading = loadingInsight === p.id
+              const demoFallback = p.sku && DEMO_INSIGHTS[p.sku]
+                ? { id: 'demo-' + p.sku, product_id: p.id, date: '2026-04-22', generated_at: '2026-04-22T00:00:00Z', ...DEMO_INSIGHTS[p.sku] }
+                : undefined
+              const insight = insights.find(i => i.product_id === p.id) ?? demoFallback
               return (
                 <div key={p.id} className="border border-white/10 p-4 bg-black/30">
                   <div className="ryobi-heading text-xs text-white mb-0.5 leading-snug">{p.name}</div>
@@ -591,17 +614,8 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
                         <span>Sentiment</span>
                         <span className={`font-bold ${(insight.sentiment_score ?? 0) >= 6 ? 'text-ryobi-yellow' : 'text-amber-400'}`}>{insight.sentiment_score}/10</span>
                       </div>
-                      <button onClick={() => generateInsight(p.id)} disabled={isLoading}
-                        className="text-xs text-white/45 mt-2 hover:text-white transition-colors disabled:opacity-50">
-                        {isLoading ? 'Regenerating...' : '↻ Regenerate'}
-                      </button>
                     </>
-                  ) : (
-                    <button onClick={() => generateInsight(p.id)} disabled={isLoading}
-                      className="text-xs text-ryobi-black bg-ryobi-yellow px-3 py-2 font-black ryobi-heading uppercase tracking-wider hover:bg-white transition-colors disabled:opacity-50 w-full">
-                      {isLoading ? 'Generating...' : '✦ Generate AI Summary'}
-                    </button>
-                  )}
+                  ) : null}
                 </div>
               )
             })}
