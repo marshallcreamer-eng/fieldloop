@@ -171,10 +171,15 @@ export default function LiveDashboard({ initialFeedback, products, initialInsigh
 
   async function generateInsight(productId: string) {
     setLoadingInsight(productId)
-    const res  = await fetch('/api/insights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: productId }) })
-    const data = await res.json()
-    if (data.id) setInsights(prev => [data, ...prev.filter(i => i.product_id !== productId)])
-    setLoadingInsight(null)
+    try {
+      const res  = await fetch('/api/insights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: productId }) })
+      const data = await res.json()
+      if (res.ok && data.summary) setInsights(prev => [data, ...prev.filter(i => i.product_id !== productId)])
+    } catch {
+      // silently fail — button will re-enable
+    } finally {
+      setLoadingInsight(null)
+    }
   }
 
   const DATE_LABELS: Record<DateFilter, string> = {
